@@ -494,4 +494,373 @@
         document.getElementById('modalNotes').textContent = project.NOTES || 'No notes available';
         
         // Fill in deliverables (supports HTML)
-        document.getElementById('modalDeliverables').innerHTML = project.RECAPDELIVERABLES || `
+        document.getElementById('modalDeliverables').innerHTML = project.RECAPDELIVERABLES || `<span class="text-gray-500">No deliverables listed</span>`;
+        
+        // Fill in team
+        const teamContainer = document.getElementById('modalTeam');
+        teamContainer.innerHTML = '';
+        
+        const teamRoles = [
+          { key: 'Sales', label: 'SALES' },
+          { key: 'PM', label: 'PM' },
+          { key: 'Developer', label: 'DEVELOPER' },
+          { key: 'Design', label: 'DESIGNER' },
+          { key: 'ThreeD', label: '3D' },
+          { key: 'CD', label: 'CD' },
+          { key: 'AD', label: 'AD' },
+          { key: 'Creative', label: 'CREATIVE' },
+          { key: 'Brand', label: 'BRAND' },
+          { key: 'DP', label: 'DP' },
+          { key: 'Editor', label: 'EDITOR' },
+          { key: 'VFX', label: 'VFX' },
+          { key: 'Mograph', label: 'MOGRAPH' }
+        ];
+        
+        teamRoles.forEach(role => {
+          if (project[role.key]) {
+            const roleElement = document.createElement('div');
+            roleElement.innerHTML = `<span class="font-medium">${role.label}:</span> ${project[role.key]}`;
+            teamContainer.appendChild(roleElement);
+          }
+        });
+        
+        if (teamContainer.children.length === 0) {
+          teamContainer.innerHTML = '<span class="text-gray-500">No team members assigned</span>';
+        }
+        
+        // Fill in links
+        const linksContainer = document.getElementById('modalLinks');
+        linksContainer.innerHTML = '';
+        
+        if (project['Primary domain']) {
+          const primaryDomainElement = document.createElement('div');
+          primaryDomainElement.innerHTML = `<a href="${project['Primary domain']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
+            ${project['Primary domain']}
+          </a>`;
+          linksContainer.appendChild(primaryDomainElement);
+        }
+        
+        if (project['Marketing_Slides']) {
+          const slidesElement = document.createElement('div');
+          slidesElement.innerHTML = `<a href="${project['Marketing_Slides']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            Marketing Slides
+          </a>`;
+          linksContainer.appendChild(slidesElement);
+        }
+        
+        if (project['films_by_project']) {
+          const filmsElement = document.createElement('div');
+          filmsElement.innerHTML = `<a href="${project['films_by_project']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            </svg>
+            Films
+          </a>`;
+          linksContainer.appendChild(filmsElement);
+        }
+        
+        if (linksContainer.children.length === 0) {
+          linksContainer.innerHTML = '<span class="text-gray-500">No links available</span>';
+        }
+        
+        // Show modal
+        document.getElementById('projectModal').classList.remove('hidden');
+      };
+
+      // Event listeners
+      document.getElementById('filtersToggle').addEventListener('click', () => {
+        const filtersSection = document.getElementById('filtersSection');
+        filtersSection.classList.toggle('hidden');
+      });
+      
+      document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+      
+      document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+        // Clear all checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        
+        // Clear search
+        document.getElementById('searchInput').value = '';
+        
+        // Reset filters
+        filters = {
+          clients: [],
+          categories: [],
+          deliverables: [],
+          years: [],
+          countries: []
+        };
+        
+        // Reset filteredProjects
+        filteredProjects = [...allProjects];
+        
+        // Reset pagination
+        currentPage = 1;
+        
+        // Render projects
+        renderProjects();
+        
+        // Hide filters
+        document.getElementById('filtersSection').classList.add('hidden');
+      });
+      
+      document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+        // Clear all checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        
+        // Clear search
+        document.getElementById('searchInput').value = '';
+        
+        // Reset filters
+        filters = {
+          clients: [],
+          categories: [],
+          deliverables: [],
+          years: [],
+          countries: []
+        };
+        
+        // Reset filteredProjects
+        filteredProjects = [...allProjects];
+        
+        // Reset pagination
+        currentPage = 1;
+        
+        // Render projects
+        renderProjects();
+      });
+      
+      document.getElementById('searchInput').addEventListener('input', () => {
+        applyFilters();
+      });
+      
+      document.getElementById('sortBy').addEventListener('change', () => {
+        applyFilters();
+      });
+      
+      document.getElementById('prevPageBtn').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderProjects();
+        }
+      });
+      
+      document.getElementById('nextPageBtn').addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderProjects();
+        }
+      });
+      
+      document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('projectModal').classList.add('hidden');
+      });
+      
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('projectsGrid').classList.add('hidden');
+        document.getElementById('paginationControls').classList.add('hidden');
+        document.getElementById('noResultsState').classList.add('hidden');
+        
+        fetchProjects();
+      });
+
+      // Toggle filter dropdowns
+      const setupFilterToggle = (inputId, containerId) => {
+        const input = document.getElementById(inputId);
+        const container = document.getElementById(containerId);
+        
+        input.addEventListener('focus', () => {
+          container.classList.remove('hidden');
+        });
+        
+        input.addEventListener('input', (e) => {
+          const searchTerm = e.target.value.toLowerCase();
+          const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+          
+          checkboxes.forEach(checkbox => {
+            const label = checkbox.nextElementSibling;
+            const text = label.textContent.toLowerCase();
+            
+            if (text.includes(searchTerm)) {
+              checkbox.parentElement.classList.remove('hidden');
+            } else {
+              checkbox.parentElement.classList.add('hidden');
+            }
+          });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!input.contains(e.target) && !container.contains(e.target)) {
+            container.classList.add('hidden');
+          }
+        });
+      };
+      
+      setupFilterToggle('clientSearch', 'clientFilterContainer');
+      setupFilterToggle('categorySearch', 'categoryFilterContainer');
+      setupFilterToggle('deliverableSearch', 'deliverableFilterContainer');
+      setupFilterToggle('yearSearch', 'yearFilterContainer');
+      setupFilterToggle('countrySearch', 'countryFilterContainer');
+      
+      // GRIST INTEGRATION
+      const initGristIntegration = async () => {
+        try {
+          // Initialize Grist Plugin API
+          const grist = window.grist || undefined;
+          
+          if (!grist) {
+            console.log('Grist API not available, falling back to CSV data');
+            // Fall back to CSV data if Grist isn't available
+            fetchProjects();
+            return;
+          }
+          
+          // Subscribe to table data
+          await grist.ready();
+          console.log('Grist API connected');
+          
+          // Get data from 'Projects' table
+          grist.onRecord(async (record) => {
+            if (record) {
+              console.log('Selected record:', record);
+              
+              // Find or create project based on record
+              const projectId = record.Project_Number || '';
+              
+              // Show project details
+              showProjectDetails(projectId);
+            }
+          });
+          
+          // Get all records
+          const tableData = await grist.fetchTable('Projects');
+          allProjects = tableData.map(record => {
+            // Transform record to match our expected structure
+            return {
+              Project_Number: record.Project_Number || '',
+              Projects: record.Projects || '',
+              DELIVERABLES: record.DELIVERABLES || '',
+              RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
+              year: record.year || null,
+              NOTES: record.NOTES || '',
+              Client: record.Client || '',
+              Category: record.Category || '',
+              ThreeD: record.ThreeD || '',
+              AD: record.AD || '',
+              CD: record.CD || '',
+              Creative: record.Creative || '',
+              Brand: record.Brand || '',
+              Developer: record.Developer || '',
+              DP: record.DP || '',
+              Editor: record.Editor || '',
+              Design: record.Design || '',
+              Mograph: record.Mograph || '',
+              PM: record.PM || '',
+              Sales: record.Sales || '',
+              VFX: record.VFX || '',
+              City: record.City || '',
+              State: record.State || '',
+              Country: record.Country || '',
+              Address: record.Address || '',
+              Latitude: record.Latitude || null,
+              Longitude: record.Longitude || null,
+              'Primary domain': record['Primary domain'] || '',
+              Marketing_Slides: record.Marketing_Slides || '',
+              films_by_project: record.films_by_project || ''
+            };
+          });
+          
+          filteredProjects = [...allProjects];
+          
+          populateFilters();
+          renderProjects();
+          
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('projectsGrid').classList.remove('hidden');
+          document.getElementById('paginationControls').classList.remove('hidden');
+          
+          // Listen for changes to the table
+          grist.onTableChanged((tableId) => {
+            if (tableId === 'Projects') {
+              console.log('Projects table changed, refreshing data');
+              fetchGristData();
+            }
+          });
+          
+        } catch (error) {
+          console.error('Error initializing Grist:', error);
+          // Fall back to CSV data if there's an error with Grist
+          fetchProjects();
+        }
+      };
+      
+      // Fetch data from Grist
+      const fetchGristData = async () => {
+        try {
+          const grist = window.grist;
+          if (!grist) {
+            throw new Error('Grist API not available');
+          }
+          
+          const tableData = await grist.fetchTable('Projects');
+          allProjects = tableData.map(record => ({
+            Project_Number: record.Project_Number || '',
+            Projects: record.Projects || '',
+            DELIVERABLES: record.DELIVERABLES || '',
+            RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
+            year: record.year || null,
+            NOTES: record.NOTES || '',
+            Client: record.Client || '',
+            Category: record.Category || '',
+            ThreeD: record.ThreeD || '',
+            AD: record.AD || '',
+            CD: record.CD || '',
+            Creative: record.Creative || '',
+            Brand: record.Brand || '',
+            Developer: record.Developer || '',
+            DP: record.DP || '',
+            Editor: record.Editor || '',
+            Design: record.Design || '',
+            Mograph: record.Mograph || '',
+            PM: record.PM || '',
+            Sales: record.Sales || '',
+            VFX: record.VFX || '',
+            City: record.City || '',
+            State: record.State || '',
+            Country: record.Country || '',
+            Address: record.Address || '',
+            Latitude: record.Latitude || null,
+            Longitude: record.Longitude || null,
+            'Primary domain': record['Primary domain'] || '',
+            Marketing_Slides: record.Marketing_Slides || '',
+            films_by_project: record.films_by_project || ''
+          }));
+          
+          // Apply current filters to new data
+          applyFilters();
+          
+        } catch (error) {
+          console.error('Error fetching Grist data:', error);
+        }
+      };
+      
+      // Initialize the dashboard
+      // Try to use Grist first, fallback to CSV data
+      initGristIntegration();
+    });
+  </script>
+</body>
+</html>
