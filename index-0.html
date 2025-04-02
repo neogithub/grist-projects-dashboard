@@ -8,7 +8,6 @@
   <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -283,7 +282,36 @@
         countries: []
       };
 
-      // No longer needed as we're using Grist API directly
+      // Mock fetch for development (will be replaced by Grist API)
+      const fetchProjects = async () => {
+        try {
+          // This will be replaced with Grist API code
+          // For now, use the data we have for development
+          const response = await fetch('Project DeliverablesProjects.csv');
+          const csvText = await response.text();
+          
+          // Parse CSV (using Papaparse via window for demo)
+          const result = Papa.parse(csvText, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true
+          });
+          
+          allProjects = result.data;
+          filteredProjects = [...allProjects];
+          
+          populateFilters();
+          renderProjects();
+          
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('projectsGrid').classList.remove('hidden');
+          document.getElementById('paginationControls').classList.remove('hidden');
+        } catch (error) {
+          console.error('Error fetching projects:', error);
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('noResultsState').classList.remove('hidden');
+        }
+      };
 
       // Populate filter dropdowns
       const populateFilters = () => {
@@ -645,8 +673,7 @@
         document.getElementById('paginationControls').classList.add('hidden');
         document.getElementById('noResultsState').classList.add('hidden');
         
-        // Reinitialize the Grist connection
-        initGristIntegration();
+        fetchProjects();
       });
 
       // Toggle filter dropdowns
@@ -692,105 +719,37 @@
       const initGristIntegration = async () => {
         try {
           // Initialize Grist Plugin API
-          const gristApi = window.grist || undefined;
+          const grist = window.grist || undefined;
           
-          if (!gristApi) {
-            console.error('Grist API not available');
-            document.getElementById('loadingState').innerHTML = `
-              <div class="text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p class="mt-4 text-lg font-semibold text-gray-800">Grist API not available</p>
-                <p class="text-gray-600">Make sure this dashboard is loaded as a Custom Widget in Grist.</p>
-              </div>
-            `;
+          if (!grist) {
+            console.log('Grist API not available, falling back to CSV data');
+            // Fall back to CSV data if Grist isn't available
+            fetchProjects();
             return;
           }
           
-          // Connect to the Grist API
-          await gristApi.ready();
+          // Subscribe to table data
+          await grist.ready();
           console.log('Grist API connected');
           
-          // Access the table data through the API
-          const gristTable = await gristApi.getTable();
-          console.log('Connected to table:', gristTable);
-          
-          // Get table records
-          const fetchGristRecords = async () => {
-            // Get all records from the current table
-            const records = await gristApi.fetchSelectedTable();
-            console.log(`Fetched ${records.length} records from Grist`);
-            
-            // Transform records to match our expected structure
-            allProjects = records.map(record => {
-              return {
-                Project_Number: record.Project_Number || '',
-                Projects: record.Projects || '',
-                DELIVERABLES: record.DELIVERABLES || '',
-                RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
-                year: record.year || null,
-                NOTES: record.NOTES || '',
-                Client: record.Client || '',
-                Category: record.Category || '',
-                ThreeD: record.ThreeD || '',
-                AD: record.AD || '',
-                CD: record.CD || '',
-                Creative: record.Creative || '',
-                Brand: record.Brand || '',
-                Developer: record.Developer || '',
-                DP: record.DP || '',
-                Editor: record.Editor || '',
-                Design: record.Design || '',
-                Mograph: record.Mograph || '',
-                PM: record.PM || '',
-                Sales: record.Sales || '',
-                VFX: record.VFX || '',
-                City: record.City || '',
-                State: record.State || '',
-                Country: record.Country || '',
-                Address: record.Address || '',
-                Latitude: record.Latitude || null,
-                Longitude: record.Longitude || null,
-                'Primary domain': record['Primary domain'] || '',
-                Marketing_Slides: record.Marketing_Slides || '',
-                films_by_project: record.films_by_project || ''
-              };
-            });
-            
-            filteredProjects = [...allProjects];
-            
-            populateFilters();
-            renderProjects();
-            
-            document.getElementById('loadingState').classList.add('hidden');
-            document.getElementById('projectsGrid').classList.remove('hidden');
-            document.getElementById('paginationControls').classList.remove('hidden');
-          };
-          
-          // Fetch initial data
-          await fetchGristRecords();
-          
-          // Subscribe to selected record changes
-          gristApi.onRecord(record => {
+          // Get data from 'Projects' table
+          grist.onRecord(async (record) => {
             if (record) {
               console.log('Selected record:', record);
+              
+              // Find or create project based on record
               const projectId = record.Project_Number || '';
               
-              // Find the project in our data
-              const project = allProjects.find(p => p.Project_Number === projectId);
-              if (project) {
-                showProjectDetails(projectId);
-              } else {
-                console.warn('Selected project not found in loaded data:', projectId);
-              }
+              // Show project details
+              showProjectDetails(projectId);
             }
           });
           
-          // Subscribe to table data changes
-          gristApi.onRecords(records => {
-            console.log('Table data changed, refreshing records');
-            allProjects = records.map(record => ({
+          // Get all records
+          const tableData = await grist.fetchTable('Projects');
+          allProjects = tableData.map(record => {
+            // Transform record to match our expected structure
+            return {
               Project_Number: record.Project_Number || '',
               Projects: record.Projects || '',
               DELIVERABLES: record.DELIVERABLES || '',
@@ -821,27 +780,85 @@
               'Primary domain': record['Primary domain'] || '',
               Marketing_Slides: record.Marketing_Slides || '',
               films_by_project: record.films_by_project || ''
-            }));
-            
-            // Apply current filters to new data
-            applyFilters();
+            };
+          });
+          
+          filteredProjects = [...allProjects];
+          
+          populateFilters();
+          renderProjects();
+          
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('projectsGrid').classList.remove('hidden');
+          document.getElementById('paginationControls').classList.remove('hidden');
+          
+          // Listen for changes to the table
+          grist.onTableChanged((tableId) => {
+            if (tableId === 'Projects') {
+              console.log('Projects table changed, refreshing data');
+              fetchGristData();
+            }
           });
           
         } catch (error) {
           console.error('Error initializing Grist:', error);
-          document.getElementById('loadingState').innerHTML = `
-            <div class="text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p class="mt-4 text-lg font-semibold text-gray-800">Error connecting to Grist</p>
-              <p class="text-gray-600">${error.message}</p>
-            </div>
-          `;
+          // Fall back to CSV data if there's an error with Grist
+          fetchProjects();
         }
       };
       
-      // Initialize the dashboard with Grist
+      // Fetch data from Grist
+      const fetchGristData = async () => {
+        try {
+          const grist = window.grist;
+          if (!grist) {
+            throw new Error('Grist API not available');
+          }
+          
+          const tableData = await grist.fetchTable('Projects');
+          allProjects = tableData.map(record => ({
+            Project_Number: record.Project_Number || '',
+            Projects: record.Projects || '',
+            DELIVERABLES: record.DELIVERABLES || '',
+            RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
+            year: record.year || null,
+            NOTES: record.NOTES || '',
+            Client: record.Client || '',
+            Category: record.Category || '',
+            ThreeD: record.ThreeD || '',
+            AD: record.AD || '',
+            CD: record.CD || '',
+            Creative: record.Creative || '',
+            Brand: record.Brand || '',
+            Developer: record.Developer || '',
+            DP: record.DP || '',
+            Editor: record.Editor || '',
+            Design: record.Design || '',
+            Mograph: record.Mograph || '',
+            PM: record.PM || '',
+            Sales: record.Sales || '',
+            VFX: record.VFX || '',
+            City: record.City || '',
+            State: record.State || '',
+            Country: record.Country || '',
+            Address: record.Address || '',
+            Latitude: record.Latitude || null,
+            Longitude: record.Longitude || null,
+            'Primary domain': record['Primary domain'] || '',
+            Marketing_Slides: record.Marketing_Slides || '',
+            films_by_project: record.films_by_project || ''
+          }));
+          
+          // Apply current filters to new data
+          applyFilters();
+          
+        } catch (error) {
+          console.error('Error fetching Grist data:', error);
+        }
+      };
+      
+      // Initialize the dashboard
+      // Try to use Grist first, fallback to CSV data
       initGristIntegration();
     });
   </script>
