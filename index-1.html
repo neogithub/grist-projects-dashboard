@@ -718,261 +718,110 @@
           
           // Get table records
           const fetchGristRecords = async () => {
-            try {
-              // Get all records from the current table
-              const tableData = await gristApi.fetchSelectedTable();
-              console.log('Fetched data from Grist:', tableData);
-              
-              // Check the structure of the returned data
-              if (!tableData || typeof tableData !== 'object') {
-                throw new Error('Invalid data structure received from Grist');
-              }
-              
-              // The Grist API returns data in a specific format - we need to extract the records
-              // Typically it returns: { records: [...], tableId: "...", etc }
-              let records = [];
-              
-              if (Array.isArray(tableData)) {
-                // Direct array of records
-                records = tableData;
-              } else if (tableData.records && Array.isArray(tableData.records)) {
-                // Records in a 'records' property
-                records = tableData.records;
-              } else if (tableData.data && Array.isArray(tableData.data)) {
-                // Records in a 'data' property
-                records = tableData.data;
-              } else {
-                // Try to find any array property that might contain the records
-                for (const key in tableData) {
-                  if (Array.isArray(tableData[key]) && tableData[key].length > 0) {
-                    records = tableData[key];
-                    console.log(`Found records in property: ${key}`);
-                    break;
-                  }
-                }
-                
-                // If we still don't have records, log the entire structure
-                if (records.length === 0) {
-                  console.error('Unable to find records in the returned data structure:', tableData);
-                  throw new Error('Could not locate records in the returned data structure');
-                }
-              }
-              
-              console.log(`Processing ${records.length} records from Grist`);
-              
-              // Transform records to match our expected structure
-              // First, examine the first record to understand its structure
-              if (records.length > 0) {
-                console.log('Sample record structure:', records[0]);
-              }
-              
-              // Now process all records
-              allProjects = records.map(record => {
-                // Handle different possible record structures
-                const fields = record.fields || record;
-                
-                return {
-                  Project_Number: getFieldValue(fields, 'Project_Number', ''),
-                  Projects: getFieldValue(fields, 'Projects', ''),
-                  DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
-                  RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', ''),
-                  year: getFieldValue(fields, 'year', null),
-                  NOTES: getFieldValue(fields, 'NOTES', ''),
-                  Client: getFieldValue(fields, 'Client', ''),
-                  Category: getFieldValue(fields, 'Category', ''),
-                  ThreeD: getFieldValue(fields, 'ThreeD', ''),
-                  AD: getFieldValue(fields, 'AD', ''),
-                  CD: getFieldValue(fields, 'CD', ''),
-                  Creative: getFieldValue(fields, 'Creative', ''),
-                  Brand: getFieldValue(fields, 'Brand', ''),
-                  Developer: getFieldValue(fields, 'Developer', ''),
-                  DP: getFieldValue(fields, 'DP', ''),
-                  Editor: getFieldValue(fields, 'Editor', ''),
-                  Design: getFieldValue(fields, 'Design', ''),
-                  Mograph: getFieldValue(fields, 'Mograph', ''),
-                  PM: getFieldValue(fields, 'PM', ''),
-                  Sales: getFieldValue(fields, 'Sales', ''),
-                  VFX: getFieldValue(fields, 'VFX', ''),
-                  City: getFieldValue(fields, 'City', ''),
-                  State: getFieldValue(fields, 'State', ''),
-                  Country: getFieldValue(fields, 'Country', ''),
-                  Address: getFieldValue(fields, 'Address', ''),
-                  Latitude: getFieldValue(fields, 'Latitude', null),
-                  Longitude: getFieldValue(fields, 'Longitude', null),
-                  'Primary domain': getFieldValue(fields, 'Primary domain', ''),
-                  Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
-                  films_by_project: getFieldValue(fields, 'films_by_project', '')
-                };
-              });
-              
-              filteredProjects = [...allProjects];
-              
-              populateFilters();
-              renderProjects();
-              
-              document.getElementById('loadingState').classList.add('hidden');
-              document.getElementById('projectsGrid').classList.remove('hidden');
-              document.getElementById('paginationControls').classList.remove('hidden');
-            } catch (error) {
-              console.error('Error processing Grist records:', error);
-              document.getElementById('loadingState').innerHTML = `
-                <div class="text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p class="mt-4 text-lg font-semibold text-gray-800">Error processing data</p>
-                  <p class="text-gray-600">${error.message}</p>
-                  <p class="mt-2 text-sm text-gray-500">Check the browser console for more details.</p>
-                </div>
-              `;
-            }
-          };
-          
-          // Helper function to safely get field values
-          const getFieldValue = (obj, fieldName, defaultValue) => {
-            if (obj === null || obj === undefined) return defaultValue;
+            // Get all records from the current table
+            const records = await gristApi.fetchSelectedTable();
+            console.log(`Fetched ${records.length} records from Grist`);
             
-            // Try direct access first
-            if (obj[fieldName] !== undefined) return obj[fieldName];
+            // Transform records to match our expected structure
+            allProjects = records.map(record => {
+              return {
+                Project_Number: record.Project_Number || '',
+                Projects: record.Projects || '',
+                DELIVERABLES: record.DELIVERABLES || '',
+                RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
+                year: record.year || null,
+                NOTES: record.NOTES || '',
+                Client: record.Client || '',
+                Category: record.Category || '',
+                ThreeD: record.ThreeD || '',
+                AD: record.AD || '',
+                CD: record.CD || '',
+                Creative: record.Creative || '',
+                Brand: record.Brand || '',
+                Developer: record.Developer || '',
+                DP: record.DP || '',
+                Editor: record.Editor || '',
+                Design: record.Design || '',
+                Mograph: record.Mograph || '',
+                PM: record.PM || '',
+                Sales: record.Sales || '',
+                VFX: record.VFX || '',
+                City: record.City || '',
+                State: record.State || '',
+                Country: record.Country || '',
+                Address: record.Address || '',
+                Latitude: record.Latitude || null,
+                Longitude: record.Longitude || null,
+                'Primary domain': record['Primary domain'] || '',
+                Marketing_Slides: record.Marketing_Slides || '',
+                films_by_project: record.films_by_project || ''
+              };
+            });
             
-            // Try case-insensitive match
-            const lowerFieldName = fieldName.toLowerCase();
-            for (const key in obj) {
-              if (key.toLowerCase() === lowerFieldName) {
-                return obj[key];
-              }
-            }
+            filteredProjects = [...allProjects];
             
-            return defaultValue;
+            populateFilters();
+            renderProjects();
+            
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('projectsGrid').classList.remove('hidden');
+            document.getElementById('paginationControls').classList.remove('hidden');
           };
           
           // Fetch initial data
           await fetchGristRecords();
           
           // Subscribe to selected record changes
-          gristApi.onRecord(recordData => {
-            if (!recordData) return;
-            
-            console.log('Selected record:', recordData);
-            
-            // Handle different record structures
-            const record = recordData.fields || recordData;
-            const projectId = getFieldValue(record, 'Project_Number', '');
-            
-            if (!projectId) {
-              console.warn('Selected record does not have a Project_Number');
-              return;
-            }
-            
-            // Find the project in our data
-            const project = allProjects.find(p => p.Project_Number === projectId);
-            if (project) {
-              showProjectDetails(projectId);
-            } else {
-              console.warn('Selected project not found in loaded data:', projectId);
+          gristApi.onRecord(record => {
+            if (record) {
+              console.log('Selected record:', record);
+              const projectId = record.Project_Number || '';
               
-              // Create a temporary project from the record to display details
-              const tempProject = {
-                Project_Number: projectId,
-                Projects: getFieldValue(record, 'Projects', ''),
-                DELIVERABLES: getFieldValue(record, 'DELIVERABLES', ''),
-                RECAPDELIVERABLES: getFieldValue(record, 'RECAPDELIVERABLES', ''),
-                year: getFieldValue(record, 'year', null),
-                NOTES: getFieldValue(record, 'NOTES', ''),
-                Client: getFieldValue(record, 'Client', ''),
-                Category: getFieldValue(record, 'Category', ''),
-                ThreeD: getFieldValue(record, 'ThreeD', ''),
-                AD: getFieldValue(record, 'AD', ''),
-                CD: getFieldValue(record, 'CD', ''),
-                Creative: getFieldValue(record, 'Creative', ''),
-                Brand: getFieldValue(record, 'Brand', ''),
-                Developer: getFieldValue(record, 'Developer', ''),
-                DP: getFieldValue(record, 'DP', ''),
-                Editor: getFieldValue(record, 'Editor', ''),
-                Design: getFieldValue(record, 'Design', ''),
-                Mograph: getFieldValue(record, 'Mograph', ''),
-                PM: getFieldValue(record, 'PM', ''),
-                Sales: getFieldValue(record, 'Sales', ''),
-                VFX: getFieldValue(record, 'VFX', ''),
-                City: getFieldValue(record, 'City', ''),
-                State: getFieldValue(record, 'State', ''),
-                Country: getFieldValue(record, 'Country', ''),
-                Address: getFieldValue(record, 'Address', ''),
-                Latitude: getFieldValue(record, 'Latitude', null),
-                Longitude: getFieldValue(record, 'Longitude', null),
-                'Primary domain': getFieldValue(record, 'Primary domain', ''),
-                Marketing_Slides: getFieldValue(record, 'Marketing_Slides', ''),
-                films_by_project: getFieldValue(record, 'films_by_project', '')
-              };
-              
-              // Add to allProjects array
-              allProjects.push(tempProject);
-              filteredProjects.push(tempProject);
-              
-              // Show details
-              showProjectDetails(projectId);
+              // Find the project in our data
+              const project = allProjects.find(p => p.Project_Number === projectId);
+              if (project) {
+                showProjectDetails(projectId);
+              } else {
+                console.warn('Selected project not found in loaded data:', projectId);
+              }
             }
           });
           
           // Subscribe to table data changes
-          gristApi.onRecords(recordsData => {
+          gristApi.onRecords(records => {
             console.log('Table data changed, refreshing records');
-            
-            // Handle different possible data structures
-            let records;
-            if (Array.isArray(recordsData)) {
-              records = recordsData;
-            } else if (recordsData && typeof recordsData === 'object') {
-              // Try to find records in the returned object
-              if (recordsData.records && Array.isArray(recordsData.records)) {
-                records = recordsData.records;
-              } else if (recordsData.data && Array.isArray(recordsData.data)) {
-                records = recordsData.data;
-              } else {
-                console.error('Unexpected data structure in onRecords:', recordsData);
-                return;
-              }
-            } else {
-              console.error('Invalid data received in onRecords:', recordsData);
-              return;
-            }
-            
-            // Process the records
-            allProjects = records.map(record => {
-              const fields = record.fields || record;
-              return {
-                Project_Number: getFieldValue(fields, 'Project_Number', ''),
-                Projects: getFieldValue(fields, 'Projects', ''),
-                DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
-                RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', ''),
-                year: getFieldValue(fields, 'year', null),
-                NOTES: getFieldValue(fields, 'NOTES', ''),
-                Client: getFieldValue(fields, 'Client', ''),
-                Category: getFieldValue(fields, 'Category', ''),
-                ThreeD: getFieldValue(fields, 'ThreeD', ''),
-                AD: getFieldValue(fields, 'AD', ''),
-                CD: getFieldValue(fields, 'CD', ''),
-                Creative: getFieldValue(fields, 'Creative', ''),
-                Brand: getFieldValue(fields, 'Brand', ''),
-                Developer: getFieldValue(fields, 'Developer', ''),
-                DP: getFieldValue(fields, 'DP', ''),
-                Editor: getFieldValue(fields, 'Editor', ''),
-                Design: getFieldValue(fields, 'Design', ''),
-                Mograph: getFieldValue(fields, 'Mograph', ''),
-                PM: getFieldValue(fields, 'PM', ''),
-                Sales: getFieldValue(fields, 'Sales', ''),
-                VFX: getFieldValue(fields, 'VFX', ''),
-                City: getFieldValue(fields, 'City', ''),
-                State: getFieldValue(fields, 'State', ''),
-                Country: getFieldValue(fields, 'Country', ''),
-                Address: getFieldValue(fields, 'Address', ''),
-                Latitude: getFieldValue(fields, 'Latitude', null),
-                Longitude: getFieldValue(fields, 'Longitude', null),
-                'Primary domain': getFieldValue(fields, 'Primary domain', ''),
-                Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
-                films_by_project: getFieldValue(fields, 'films_by_project', '')
-              };
-            });
+            allProjects = records.map(record => ({
+              Project_Number: record.Project_Number || '',
+              Projects: record.Projects || '',
+              DELIVERABLES: record.DELIVERABLES || '',
+              RECAPDELIVERABLES: record.RECAPDELIVERABLES || '',
+              year: record.year || null,
+              NOTES: record.NOTES || '',
+              Client: record.Client || '',
+              Category: record.Category || '',
+              ThreeD: record.ThreeD || '',
+              AD: record.AD || '',
+              CD: record.CD || '',
+              Creative: record.Creative || '',
+              Brand: record.Brand || '',
+              Developer: record.Developer || '',
+              DP: record.DP || '',
+              Editor: record.Editor || '',
+              Design: record.Design || '',
+              Mograph: record.Mograph || '',
+              PM: record.PM || '',
+              Sales: record.Sales || '',
+              VFX: record.VFX || '',
+              City: record.City || '',
+              State: record.State || '',
+              Country: record.Country || '',
+              Address: record.Address || '',
+              Latitude: record.Latitude || null,
+              Longitude: record.Longitude || null,
+              'Primary domain': record['Primary domain'] || '',
+              Marketing_Slides: record.Marketing_Slides || '',
+              films_by_project: record.films_by_project || ''
+            }));
             
             // Apply current filters to new data
             applyFilters();
