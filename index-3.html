@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projects Dashboard</title>
+  <!-- Grist API and Dependencies -->
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hidden {
+      display: none;
+    }
+    .filter-container {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .project-card {
+      transition: all 0.3s ease;
+    }
+    .project-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="mb-8">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Projects Dashboard</h1>
+        <div class="flex space-x-2">
+          <button id="filtersToggle" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Filters
+          </button>
+          <button id="refreshBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Filters Section (Hidden by Default) -->
+    <section id="filtersSection" class="mb-8 bg-white shadow-md rounded-lg p-4 hidden">
+      <h2 class="text-xl font-semibold mb-4 text-gray-700">Filters</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Client Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
+          <div class="relative">
+            <input type="text" id="clientSearch" placeholder="Search clients..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="clientFilterContainer" class="filter-container bg-white mt-1 border border-gray-300 rounded-lg shadow-lg p-2 hidden">
+              <!-- Client checkboxes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Category Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+          <div class="relative">
+            <input type="text" id="categorySearch" placeholder="Search categories..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="categoryFilterContainer" class="filter-container bg-white mt-1 border border-gray-300 rounded-lg shadow-lg p-2 hidden">
+              <!-- Category checkboxes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Deliverable Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Deliverable</label>
+          <div class="relative">
+            <input type="text" id="deliverableSearch" placeholder="Search deliverables..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="deliverableFilterContainer" class="filter-container bg-white mt-1 border border-gray-300 rounded-lg shadow-lg p-2 hidden">
+              <!-- Deliverable checkboxes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Year Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
+          <div class="relative">
+            <input type="text" id="yearSearch" placeholder="Search years..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="yearFilterContainer" class="filter-container bg-white mt-1 border border-gray-300 rounded-lg shadow-lg p-2 hidden">
+              <!-- Year checkboxes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Country Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Country</label>
+          <div class="relative">
+            <input type="text" id="countrySearch" placeholder="Search countries..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="countryFilterContainer" class="filter-container bg-white mt-1 border border-gray-300 rounded-lg shadow-lg p-2 hidden">
+              <!-- Country checkboxes will be populated here -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sort By -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+          <select id="sortBy" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="Projects">Project Name</option>
+            <option value="Client">Client</option>
+            <option value="year">Year</option>
+            <option value="Category">Category</option>
+            <option value="DELIVERABLES">Deliverables</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Reset and Apply Filters -->
+      <div class="flex justify-end mt-4 space-x-2">
+        <button id="resetFiltersBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Reset Filters</button>
+        <button id="applyFiltersBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Apply Filters</button>
+      </div>
+    </section>
+
+    <!-- Search Bar -->
+    <div class="mb-6">
+      <div class="relative">
+        <input type="text" id="searchInput" placeholder="Search projects..." class="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center py-10">
+      <div class="loader"></div>
+      <p class="mt-4 text-gray-600">Loading projects...</p>
+    </div>
+
+    <!-- Projects Grid -->
+    <div id="projectsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+      <!-- Project cards will be inserted here -->
+    </div>
+
+    <!-- No Results State -->
+    <div id="noResultsState" class="text-center py-10 hidden">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p class="mt-4 text-gray-600">No projects found matching your criteria.</p>
+      <button id="clearFiltersBtn" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Clear Filters</button>
+    </div>
+
+    <!-- Project Detail Modal -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+          <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Project Details</h2>
+          <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div id="modalContent" class="p-6">
+          <!-- Project detail content will be inserted here -->
+          <div class="flex flex-col md:flex-row md:space-x-6">
+            <!-- Left Column -->
+            <div class="md:w-1/2 space-y-6">
+              <!-- Client Info -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Client</h3>
+                <p id="modalClient" class="text-xl"></p>
+              </div>
+              
+              <!-- Project Info -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Project Details</h3>
+                <div class="space-y-2">
+                  <div>
+                    <span class="font-medium">Project Number:</span>
+                    <span id="modalProjectNumber"></span>
+                  </div>
+                  <div>
+                    <span class="font-medium">Category:</span>
+                    <span id="modalCategory"></span>
+                  </div>
+                  <div>
+                    <span class="font-medium">Year:</span>
+                    <span id="modalYear"></span>
+                  </div>
+                  <div>
+                    <span class="font-medium">Location:</span>
+                    <span id="modalLocation"></span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Budget -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Notes</h3>
+                <p id="modalNotes" class="italic text-gray-600"></p>
+              </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="md:w-1/2 space-y-6 mt-6 md:mt-0">
+              <!-- Deliverables -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Deliverables</h3>
+                <div id="modalDeliverables"></div>
+              </div>
+              
+              <!-- Team -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Team</h3>
+                <div id="modalTeam" class="space-y-1"></div>
+              </div>
+              
+              <!-- Marketing Materials -->
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Links</h3>
+                <div id="modalLinks" class="space-y-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div id="paginationControls" class="flex justify-between items-center mt-8 hidden">
+      <div>
+        <span id="paginationInfo" class="text-gray-600"></span>
+      </div>
+      <div class="flex space-x-2">
+        <button id="prevPageBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+          Previous
+        </button>
+        <button id="nextPageBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize variables
+      let allProjects = [];
+      let filteredProjects = [];
+      let currentPage = 1;
+      const projectsPerPage = 9;
+      
+      // Filter states
+      let filters = {
+        clients: [],
+        categories: [],
+        deliverables: [],
+        years: [],
+        countries: []
+      };
+
+      // No longer needed as we're using Grist API directly
+
+      // Populate filter dropdowns
+      const populateFilters = () => {
+        try {
+          console.log('Populating filters with data from', allProjects.length, 'projects');
+          
+          const uniqueValues = {
+            clients: [...new Set(allProjects.map(p => p.Client).filter(Boolean))].sort(),
+            categories: [...new Set(allProjects.map(p => p.Category).filter(Boolean))].sort(),
+            deliverables: [...new Set(allProjects.map(p => p.DELIVERABLES).filter(Boolean))].sort(),
+            years: [...new Set(allProjects.map(p => p.year).filter(Boolean))].sort(),
+            countries: [...new Set(allProjects.map(p => p.Country).filter(Boolean))].sort()
+          };
+          
+          console.log('Unique filter values:', uniqueValues);
+
+          // Populate client filters
+          const clientFilterContainer = document.getElementById('clientFilterContainer');
+          clientFilterContainer.innerHTML = uniqueValues.clients.map(client => `
+            <div class="flex items-center mb-1">
+              <input type="checkbox" id="client-${client.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" value="${client}" class="client-checkbox mr-2">
+              <label for="client-${client.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" class="text-sm text-gray-700">${client}</label>
+            </div>
+          `).join('');
+
+          // Populate category filters
+          const categoryFilterContainer = document.getElementById('categoryFilterContainer');
+          categoryFilterContainer.innerHTML = uniqueValues.categories.map(category => `
+            <div class="flex items-center mb-1">
+              <input type="checkbox" id="category-${category.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" value="${category}" class="category-checkbox mr-2">
+              <label for="category-${category.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" class="text-sm text-gray-700">${category}</label>
+            </div>
+          `).join('');
+
+          // Populate deliverable filters
+          const deliverableFilterContainer = document.getElementById('deliverableFilterContainer');
+          deliverableFilterContainer.innerHTML = uniqueValues.deliverables.map(deliverable => `
+            <div class="flex items-center mb-1">
+              <input type="checkbox" id="deliverable-${deliverable.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" value="${deliverable}" class="deliverable-checkbox mr-2">
+              <label for="deliverable-${deliverable.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" class="text-sm text-gray-700">${deliverable}</label>
+            </div>
+          `).join('');
+
+          // Populate year filters
+          const yearFilterContainer = document.getElementById('yearFilterContainer');
+          yearFilterContainer.innerHTML = uniqueValues.years.map(year => `
+            <div class="flex items-center mb-1">
+              <input type="checkbox" id="year-${year}" value="${year}" class="year-checkbox mr-2">
+              <label for="year-${year}" class="text-sm text-gray-700">${year}</label>
+            </div>
+          `).join('');
+
+          // Populate country filters
+          const countryFilterContainer = document.getElementById('countryFilterContainer');
+          countryFilterContainer.innerHTML = uniqueValues.countries.map(country => `
+            <div class="flex items-center mb-1">
+              <input type="checkbox" id="country-${country.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" value="${country}" class="country-checkbox mr-2">
+              <label for="country-${country.toString().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '')}" class="text-sm text-gray-700">${country}</label>
+            </div>
+          `).join('');
+          
+          // Set up the filter toggle listeners after populating the filters
+          setupFilterToggles();
+        } catch (error) {
+          console.error('Error populating filters:', error);
+        }
+      };
+
+      // Apply filters
+      const applyFilters = () => {
+        try {
+          console.log('Applying filters...');
+          
+          // Get selected filter values
+          filters.clients = Array.from(document.querySelectorAll('.client-checkbox:checked')).map(el => el.value);
+          filters.categories = Array.from(document.querySelectorAll('.category-checkbox:checked')).map(el => el.value);
+          filters.deliverables = Array.from(document.querySelectorAll('.deliverable-checkbox:checked')).map(el => el.value);
+          filters.years = Array.from(document.querySelectorAll('.year-checkbox:checked')).map(el => el.value);
+          filters.countries = Array.from(document.querySelectorAll('.country-checkbox:checked')).map(el => el.value);
+          
+          const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+          console.log('Search term:', searchTerm);
+          console.log('Active filters:', filters);
+          
+          // Apply filters
+          filteredProjects = allProjects.filter(project => {
+            // Search term matching
+            const matchesSearch = !searchTerm || 
+              (project.Projects && project.Projects.toString().toLowerCase().includes(searchTerm)) || 
+              (project.Client && project.Client.toString().toLowerCase().includes(searchTerm)) ||
+              (project.DELIVERABLES && project.DELIVERABLES.toString().toLowerCase().includes(searchTerm)) ||
+              (project.Project_Number && project.Project_Number.toString().toLowerCase().includes(searchTerm));
+            
+            // Filter matching
+            const matchesClient = filters.clients.length === 0 || (project.Client && filters.clients.includes(project.Client));
+            const matchesCategory = filters.categories.length === 0 || (project.Category && filters.categories.includes(project.Category));
+            const matchesDeliverable = filters.deliverables.length === 0 || (project.DELIVERABLES && filters.deliverables.includes(project.DELIVERABLES));
+            const matchesYear = filters.years.length === 0 || (project.year && filters.years.includes(project.year));
+            const matchesCountry = filters.countries.length === 0 || (project.Country && filters.countries.includes(project.Country));
+            
+            return matchesSearch && matchesClient && matchesCategory && matchesDeliverable && matchesYear && matchesCountry;
+          });
+          
+          console.log(`Filtered from ${allProjects.length} to ${filteredProjects.length} projects`);
+          
+          // Sort projects
+          const sortBy = document.getElementById('sortBy').value;
+          filteredProjects.sort((a, b) => {
+            if (!a[sortBy]) return 1;
+            if (!b[sortBy]) return -1;
+            return String(a[sortBy]).localeCompare(String(b[sortBy]));
+          });
+          
+          // Reset pagination
+          currentPage = 1;
+          
+          // Render filtered projects
+          renderProjects();
+          
+          // Hide filters if they were open
+          document.getElementById('filtersSection').classList.add('hidden');
+        } catch (error) {
+          console.error('Error applying filters:', error);
+        }
+      };
+
+      // Render projects grid
+      const renderProjects = () => {
+        const projectsGrid = document.getElementById('projectsGrid');
+        const startIndex = (currentPage - 1) * projectsPerPage;
+        const endIndex = startIndex + projectsPerPage;
+        const projectsToShow = filteredProjects.slice(startIndex, endIndex);
+        
+        if (filteredProjects.length === 0) {
+          document.getElementById('projectsGrid').classList.add('hidden');
+          document.getElementById('paginationControls').classList.add('hidden');
+          document.getElementById('noResultsState').classList.remove('hidden');
+          return;
+        } else {
+          document.getElementById('projectsGrid').classList.remove('hidden');
+          document.getElementById('paginationControls').classList.remove('hidden');
+          document.getElementById('noResultsState').classList.add('hidden');
+        }
+        
+        projectsGrid.innerHTML = projectsToShow.map(project => `
+          <div class="project-card bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg cursor-pointer" data-project-id="${project.Project_Number}">
+            <div class="p-4">
+              <h3 class="text-xl font-semibold text-gray-800 mb-2">${project.Projects || 'Untitled Project'}</h3>
+              <div class="flex flex-wrap gap-1 mb-3">
+                ${project.Category ? `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">${project.Category}</span>` : ''}
+                ${project.year ? `<span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">${project.year}</span>` : ''}
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600">${project.Client || 'Unknown Client'}</span>
+                <span class="text-sm text-gray-500">${project.DELIVERABLES || 'No deliverables'}</span>
+              </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 border-t">
+              <div class="flex justify-between">
+                <span class="text-xs text-gray-500">${project.Project_Number || ''}</span>
+                <span class="text-xs text-gray-500">${project.City ? project.City + (project.Country ? ', ' + project.Country : '') : (project.Country || 'Location unknown')}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        
+        // Update pagination info
+        document.getElementById('paginationInfo').textContent = `Showing ${startIndex + 1}-${Math.min(endIndex, filteredProjects.length)} of ${filteredProjects.length} projects`;
+        
+        // Update pagination buttons
+        document.getElementById('prevPageBtn').disabled = currentPage === 1;
+        document.getElementById('nextPageBtn').disabled = endIndex >= filteredProjects.length;
+        
+        // Add event listeners
+        document.querySelectorAll('.project-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const projectId = card.getAttribute('data-project-id');
+            showProjectDetails(projectId);
+          });
+        });
+      };
+
+      // Show project details
+      const showProjectDetails = (projectId) => {
+        const project = allProjects.find(p => p.Project_Number === projectId);
+        if (!project) return;
+        
+        // Set modal title
+        document.getElementById('modalTitle').textContent = project.Projects || 'Untitled Project';
+        
+        // Fill in client info
+        document.getElementById('modalClient').textContent = project.Client || 'Unknown Client';
+        
+        // Fill in project details
+        document.getElementById('modalProjectNumber').textContent = project.Project_Number || 'N/A';
+        document.getElementById('modalCategory').textContent = project.Category || 'N/A';
+        document.getElementById('modalYear').textContent = project.year || 'N/A';
+        document.getElementById('modalLocation').textContent = [
+          project.City,
+          project.State,
+          project.Country
+        ].filter(Boolean).join(', ') || 'Location unknown';
+        
+        // Fill in notes
+        document.getElementById('modalNotes').textContent = project.NOTES || 'No notes available';
+        
+        // Fill in deliverables (supports HTML)
+        document.getElementById('modalDeliverables').innerHTML = project.RECAPDELIVERABLES || `<span class="text-gray-500">No deliverables listed</span>`;
+        
+        // Fill in team
+        const teamContainer = document.getElementById('modalTeam');
+        teamContainer.innerHTML = '';
+        
+        const teamRoles = [
+          { key: 'Sales', label: 'SALES' },
+          { key: 'PM', label: 'PM' },
+          { key: 'Developer', label: 'DEVELOPER' },
+          { key: 'Design', label: 'DESIGNER' },
+          { key: 'ThreeD', label: '3D' },
+          { key: 'CD', label: 'CD' },
+          { key: 'AD', label: 'AD' },
+          { key: 'Creative', label: 'CREATIVE' },
+          { key: 'Brand', label: 'BRAND' },
+          { key: 'DP', label: 'DP' },
+          { key: 'Editor', label: 'EDITOR' },
+          { key: 'VFX', label: 'VFX' },
+          { key: 'Mograph', label: 'MOGRAPH' }
+        ];
+        
+        teamRoles.forEach(role => {
+          if (project[role.key]) {
+            const roleElement = document.createElement('div');
+            roleElement.innerHTML = `<span class="font-medium">${role.label}:</span> ${project[role.key]}`;
+            teamContainer.appendChild(roleElement);
+          }
+        });
+        
+        if (teamContainer.children.length === 0) {
+          teamContainer.innerHTML = '<span class="text-gray-500">No team members assigned</span>';
+        }
+        
+        // Fill in links
+        const linksContainer = document.getElementById('modalLinks');
+        linksContainer.innerHTML = '';
+        
+        if (project['Primary domain']) {
+          const primaryDomainElement = document.createElement('div');
+          primaryDomainElement.innerHTML = `<a href="${project['Primary domain']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            </svg>
+            ${project['Primary domain']}
+          </a>`;
+          linksContainer.appendChild(primaryDomainElement);
+        }
+        
+        if (project['Marketing_Slides']) {
+          const slidesElement = document.createElement('div');
+          slidesElement.innerHTML = `<a href="${project['Marketing_Slides']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+            </svg>
+            Marketing Slides
+          </a>`;
+          linksContainer.appendChild(slidesElement);
+        }
+        
+        if (project['films_by_project']) {
+          const filmsElement = document.createElement('div');
+          filmsElement.innerHTML = `<a href="${project['films_by_project']}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            </svg>
+            Films
+          </a>`;
+          linksContainer.appendChild(filmsElement);
+        }
+        
+        if (linksContainer.children.length === 0) {
+          linksContainer.innerHTML = '<span class="text-gray-500">No links available</span>';
+        }
+        
+        // Show modal
+        document.getElementById('projectModal').classList.remove('hidden');
+      };
+
+      // Event listeners
+      document.getElementById('filtersToggle').addEventListener('click', () => {
+        const filtersSection = document.getElementById('filtersSection');
+        filtersSection.classList.toggle('hidden');
+      });
+      
+      document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
+      
+      document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+        // Clear all checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        
+        // Clear search
+        document.getElementById('searchInput').value = '';
+        
+        // Reset filters
+        filters = {
+          clients: [],
+          categories: [],
+          deliverables: [],
+          years: [],
+          countries: []
+        };
+        
+        // Reset filteredProjects
+        filteredProjects = [...allProjects];
+        
+        // Reset pagination
+        currentPage = 1;
+        
+        // Render projects
+        renderProjects();
+        
+        // Hide filters
+        document.getElementById('filtersSection').classList.add('hidden');
+      });
+      
+      document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+        // Clear all checkboxes
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        
+        // Clear search
+        document.getElementById('searchInput').value = '';
+        
+        // Reset filters
+        filters = {
+          clients: [],
+          categories: [],
+          deliverables: [],
+          years: [],
+          countries: []
+        };
+        
+        // Reset filteredProjects
+        filteredProjects = [...allProjects];
+        
+        // Reset pagination
+        currentPage = 1;
+        
+        // Render projects
+        renderProjects();
+      });
+      
+      document.getElementById('searchInput').addEventListener('input', () => {
+        console.log('Search input changed:', document.getElementById('searchInput').value);
+        applyFilters();
+      });
+      
+      document.getElementById('sortBy').addEventListener('change', () => {
+        applyFilters();
+      });
+      
+      document.getElementById('prevPageBtn').addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderProjects();
+        }
+      });
+      
+      document.getElementById('nextPageBtn').addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderProjects();
+        }
+      });
+      
+      document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('projectModal').classList.add('hidden');
+      });
+      
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('projectsGrid').classList.add('hidden');
+        document.getElementById('paginationControls').classList.add('hidden');
+        document.getElementById('noResultsState').classList.add('hidden');
+        
+        // Reinitialize the Grist connection
+        initGristIntegration();
+      });
+
+      // Toggle filter dropdowns
+      const setupFilterToggles = () => {
+        const setupFilterToggle = (inputId, containerId) => {
+          const input = document.getElementById(inputId);
+          const container = document.getElementById(containerId);
+          
+          if (!input || !container) {
+            console.error(`Filter elements not found: ${inputId} or ${containerId}`);
+            return;
+          }
+          
+          input.addEventListener('focus', () => {
+            container.classList.remove('hidden');
+          });
+          
+          input.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+            
+            checkboxes.forEach(checkbox => {
+              const label = checkbox.nextElementSibling;
+              if (!label) return;
+              
+              const text = label.textContent.toLowerCase();
+              
+              if (text.includes(searchTerm)) {
+                checkbox.parentElement.classList.remove('hidden');
+              } else {
+                checkbox.parentElement.classList.add('hidden');
+              }
+            });
+          });
+          
+          // Close dropdown when clicking outside
+          document.addEventListener('click', (e) => {
+            if (!input.contains(e.target) && !container.contains(e.target)) {
+              container.classList.add('hidden');
+            }
+          });
+        };
+        
+        setupFilterToggle('clientSearch', 'clientFilterContainer');
+        setupFilterToggle('categorySearch', 'categoryFilterContainer');
+        setupFilterToggle('deliverableSearch', 'deliverableFilterContainer');
+        setupFilterToggle('yearSearch', 'yearFilterContainer');
+        setupFilterToggle('countrySearch', 'countryFilterContainer');
+      };
+      
+      // GRIST INTEGRATION
+      const initGristIntegration = async () => {
+        try {
+          // Initialize Grist Plugin API
+          const gristApi = window.grist || undefined;
+          
+          if (!gristApi) {
+            console.error('Grist API not available');
+            document.getElementById('loadingState').innerHTML = `
+              <div class="text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="mt-4 text-lg font-semibold text-gray-800">Grist API not available</p>
+                <p class="text-gray-600">Make sure this dashboard is loaded as a Custom Widget in Grist.</p>
+              </div>
+            `;
+            return;
+          }
+          
+          // Connect to the Grist API
+          await gristApi.ready();
+          console.log('Grist API connected');
+          
+          // Access the table data through the API
+          const gristTable = await gristApi.getTable();
+          console.log('Connected to table:', gristTable);
+          
+          // Get table records
+          const fetchGristRecords = async () => {
+            try {
+              // Get all records from the current table
+              const tableData = await gristApi.fetchSelectedTable();
+              console.log('Fetched data from Grist:', tableData);
+              
+              // Check the structure of the returned data
+              if (!tableData || typeof tableData !== 'object') {
+                throw new Error('Invalid data structure received from Grist');
+              }
+              
+              // The Grist API returns data in a specific format - we need to extract the records
+              // Typically it returns: { records: [...], tableId: "...", etc }
+              let records = [];
+              
+              if (Array.isArray(tableData)) {
+                // Direct array of records
+                records = tableData;
+              } else if (tableData.records && Array.isArray(tableData.records)) {
+                // Records in a 'records' property
+                records = tableData.records;
+              } else if (tableData.data && Array.isArray(tableData.data)) {
+                // Records in a 'data' property
+                records = tableData.data;
+              } else {
+                // Try to find any array property that might contain the records
+                for (const key in tableData) {
+                  if (Array.isArray(tableData[key]) && tableData[key].length > 0) {
+                    records = tableData[key];
+                    console.log(`Found records in property: ${key}`);
+                    break;
+                  }
+                }
+                
+                // If we still don't have records, log the entire structure
+                if (records.length === 0) {
+                  console.error('Unable to find records in the returned data structure:', tableData);
+                  throw new Error('Could not locate records in the returned data structure');
+                }
+              }
+              
+              console.log(`Processing ${records.length} records from Grist`);
+              
+              // Transform records to match our expected structure
+              // First, examine the first record to understand its structure
+              if (records.length > 0) {
+                console.log('Sample record structure:', records[0]);
+              }
+              
+              // Now process all records
+              allProjects = records.map(record => {
+                // Handle different possible record structures
+                const fields = record.fields || record;
+                
+                return {
+                  Project_Number: getFieldValue(fields, 'Project_Number', ''),
+                  Projects: getFieldValue(fields, 'Projects', ''),
+                  DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
+                  RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', ''),
+                  year: getFieldValue(fields, 'year', null),
+                  NOTES: getFieldValue(fields, 'NOTES', ''),
+                  Client: getFieldValue(fields, 'Client', ''),
+                  Category: getFieldValue(fields, 'Category', ''),
+                  ThreeD: getFieldValue(fields, 'ThreeD', ''),
+                  AD: getFieldValue(fields, 'AD', ''),
+                  CD: getFieldValue(fields, 'CD', ''),
+                  Creative: getFieldValue(fields, 'Creative', ''),
+                  Brand: getFieldValue(fields, 'Brand', ''),
+                  Developer: getFieldValue(fields, 'Developer', ''),
+                  DP: getFieldValue(fields, 'DP', ''),
+                  Editor: getFieldValue(fields, 'Editor', ''),
+                  Design: getFieldValue(fields, 'Design', ''),
+                  Mograph: getFieldValue(fields, 'Mograph', ''),
+                  PM: getFieldValue(fields, 'PM', ''),
+                  Sales: getFieldValue(fields, 'Sales', ''),
+                  VFX: getFieldValue(fields, 'VFX', ''),
+                  City: getFieldValue(fields, 'City', ''),
+                  State: getFieldValue(fields, 'State', ''),
+                  Country: getFieldValue(fields, 'Country', ''),
+                  Address: getFieldValue(fields, 'Address', ''),
+                  Latitude: getFieldValue(fields, 'Latitude', null),
+                  Longitude: getFieldValue(fields, 'Longitude', null),
+                  'Primary domain': getFieldValue(fields, 'Primary domain', ''),
+                  Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
+                  films_by_project: getFieldValue(fields, 'films_by_project', '')
+                };
+              });
+              
+              filteredProjects = [...allProjects];
+              
+              // Populate filter dropdowns with the data we have
+              populateFilters();
+              
+              // Apply filters (which will also render the projects)
+              applyFilters();
+              
+              document.getElementById('loadingState').classList.add('hidden');
+              document.getElementById('projectsGrid').classList.remove('hidden');
+              document.getElementById('paginationControls').classList.remove('hidden');
+              
+              // Don't auto-open the first project
+              // if (allProjects.length > 0) {
+              //   showProjectDetails(allProjects[0].Project_Number);
+              // }
+            } catch (error) {
+              console.error('Error processing Grist records:', error);
+              document.getElementById('loadingState').innerHTML = `
+                <div class="text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p class="mt-4 text-lg font-semibold text-gray-800">Error processing data</p>
+                  <p class="text-gray-600">${error.message}</p>
+                  <p class="mt-2 text-sm text-gray-500">Check the browser console for more details.</p>
+                </div>
+              `;
+            }
+          };
+          
+          // Helper function to safely get field values
+          const getFieldValue = (obj, fieldName, defaultValue) => {
+            if (obj === null || obj === undefined) return defaultValue;
+            
+            // Try direct access first
+            if (obj[fieldName] !== undefined) return obj[fieldName];
+            
+            // Try case-insensitive match
+            const lowerFieldName = fieldName.toLowerCase();
+            for (const key in obj) {
+              if (key.toLowerCase() === lowerFieldName) {
+                return obj[key];
+              }
+            }
+            
+            return defaultValue;
+          };
+          
+          // Fetch initial data
+          await fetchGristRecords();
+          
+          // Subscribe to selected record changes
+          gristApi.onRecord(recordData => {
+            if (!recordData) return;
+            
+            console.log('Selected record:', recordData);
+            
+            // Handle different record structures
+            const record = recordData.fields || recordData;
+            const projectId = getFieldValue(record, 'Project_Number', '');
+            
+            if (!projectId) {
+              console.warn('Selected record does not have a Project_Number');
+              return;
+            }
+            
+            // Find the project in our data
+            const project = allProjects.find(p => p.Project_Number === projectId);
+            if (project) {
+              showProjectDetails(projectId);
+            } else {
+              console.warn('Selected project not found in loaded data:', projectId);
+              
+              // Create a temporary project from the record to display details
+              const tempProject = {
+                Project_Number: projectId,
+                Projects: getFieldValue(record, 'Projects', ''),
+                DELIVERABLES: getFieldValue(record, 'DELIVERABLES', ''),
+                RECAPDELIVERABLES: getFieldValue(record, 'RECAPDELIVERABLES', ''),
+                year: getFieldValue(record, 'year', null),
+                NOTES: getFieldValue(record, 'NOTES', ''),
+                Client: getFieldValue(record, 'Client', ''),
+                Category: getFieldValue(record, 'Category', ''),
+                ThreeD: getFieldValue(record, 'ThreeD', ''),
+                AD: getFieldValue(record, 'AD', ''),
+                CD: getFieldValue(record, 'CD', ''),
+                Creative: getFieldValue(record, 'Creative', ''),
+                Brand: getFieldValue(record, 'Brand', ''),
+                Developer: getFieldValue(record, 'Developer', ''),
+                DP: getFieldValue(record, 'DP', ''),
+                Editor: getFieldValue(record, 'Editor', ''),
+                Design: getFieldValue(record, 'Design', ''),
+                Mograph: getFieldValue(record, 'Mograph', ''),
+                PM: getFieldValue(record, 'PM', ''),
+                Sales: getFieldValue(record, 'Sales', ''),
+                VFX: getFieldValue(record, 'VFX', ''),
+                City: getFieldValue(record, 'City', ''),
+                State: getFieldValue(record, 'State', ''),
+                Country: getFieldValue(record, 'Country', ''),
+                Address: getFieldValue(record, 'Address', ''),
+                Latitude: getFieldValue(record, 'Latitude', null),
+                Longitude: getFieldValue(record, 'Longitude', null),
+                'Primary domain': getFieldValue(record, 'Primary domain', ''),
+                Marketing_Slides: getFieldValue(record, 'Marketing_Slides', ''),
+                films_by_project: getFieldValue(record, 'films_by_project', '')
+              };
+              
+              // Add to allProjects array
+              allProjects.push(tempProject);
+              filteredProjects.push(tempProject);
+              
+              // Show details
+              showProjectDetails(projectId);
+            }
+          });
+          
+          // Subscribe to table data changes
+          gristApi.onRecords(recordsData => {
+            console.log('Table data changed, refreshing records');
+            
+            // Handle different possible data structures
+            let records;
+            if (Array.isArray(recordsData)) {
+              records = recordsData;
+            } else if (recordsData && typeof recordsData === 'object') {
+              // Try to find records in the returned object
+              if (recordsData.records && Array.isArray(recordsData.records)) {
+                records = recordsData.records;
+              } else if (recordsData.data && Array.isArray(recordsData.data)) {
+                records = recordsData.data;
+              } else {
+                console.error('Unexpected data structure in onRecords:', recordsData);
+                return;
+              }
+            } else {
+              console.error('Invalid data received in onRecords:', recordsData);
+              return;
+            }
+            
+            // Process the records
+            allProjects = records.map(record => {
+              const fields = record.fields || record;
+              return {
+                Project_Number: getFieldValue(fields, 'Project_Number', ''),
+                Projects: getFieldValue(fields, 'Projects', ''),
+                DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
+                RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', ''),
+                year: getFieldValue(fields, 'year', null),
+                NOTES: getFieldValue(fields, 'NOTES', ''),
+                Client: getFieldValue(fields, 'Client', ''),
+                Category: getFieldValue(fields, 'Category', ''),
+                ThreeD: getFieldValue(fields, 'ThreeD', ''),
+                AD: getFieldValue(fields, 'AD', ''),
+                CD: getFieldValue(fields, 'CD', ''),
+                Creative: getFieldValue(fields, 'Creative', ''),
+                Brand: getFieldValue(fields, 'Brand', ''),
+                Developer: getFieldValue(fields, 'Developer', ''),
+                DP: getFieldValue(fields, 'DP', ''),
+                Editor: getFieldValue(fields, 'Editor', ''),
+                Design: getFieldValue(fields, 'Design', ''),
+                Mograph: getFieldValue(fields, 'Mograph', ''),
+                PM: getFieldValue(fields, 'PM', ''),
+                Sales: getFieldValue(fields, 'Sales', ''),
+                VFX: getFieldValue(fields, 'VFX', ''),
+                City: getFieldValue(fields, 'City', ''),
+                State: getFieldValue(fields, 'State', ''),
+                Country: getFieldValue(fields, 'Country', ''),
+                Address: getFieldValue(fields, 'Address', ''),
+                Latitude: getFieldValue(fields, 'Latitude', null),
+                Longitude: getFieldValue(fields, 'Longitude', null),
+                'Primary domain': getFieldValue(fields, 'Primary domain', ''),
+                Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
+                films_by_project: getFieldValue(fields, 'films_by_project', '')
+              };
+            });
+            
+            // Apply current filters to new data
+            applyFilters();
+          });
+          
+        } catch (error) {
+          console.error('Error initializing Grist:', error);
+          document.getElementById('loadingState').innerHTML = `
+            <div class="text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p class="mt-4 text-lg font-semibold text-gray-800">Error connecting to Grist</p>
+              <p class="text-gray-600">${error.message}</p>
+            </div>
+          `;
+        }
+      };
+      
+      // Initialize the dashboard with Grist
+      initGristIntegration();
+    });
+  </script>
+</body>
+</html>
