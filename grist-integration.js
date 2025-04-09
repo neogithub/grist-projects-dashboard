@@ -63,7 +63,11 @@ const GristIntegration = (function() {
         } catch (error) {
           console.error('Error connecting to Grist API:', error);
           showInPageMessage('Error connecting to Grist API: ' + error.message);
-          callbacks.onError(error);
+          
+          // Fallback to mock data
+          console.log('Falling back to mock data due to connection error');
+          const mockData = generateMockData();
+          callbacks.onDataLoaded(mockData);
         }
       } else {
         // For testing/development outside of Grist
@@ -76,7 +80,11 @@ const GristIntegration = (function() {
     } catch (error) {
       console.error('Error initializing Grist:', error);
       showInPageMessage('Error initializing Grist: ' + error.message);
-      callbacks.onError(error);
+      
+      // Fallback to mock data
+      console.log('Falling back to mock data due to initialization error');
+      const mockData = generateMockData();
+      callbacks.onDataLoaded(mockData);
     }
   }
   
@@ -162,7 +170,7 @@ const GristIntegration = (function() {
       if (typeof gristApi.fetchSelectedTable === 'function') {
         try {
           tableData = await gristApi.fetchSelectedTable();
-          console.log('Fetched data using fetchSelectedTable');
+          console.log('Fetched data using fetchSelectedTable:', tableData);
         } catch (error) {
           console.warn('fetchSelectedTable failed:', error);
           fetchError = error;
@@ -185,10 +193,27 @@ const GristIntegration = (function() {
           });
           
           if (tableData) {
-            console.log('Fetched data using onRecords callback');
+            console.log('Fetched data using onRecords callback:', tableData);
           }
         } catch (error) {
           console.warn('onRecords approach failed:', error);
+          if (!fetchError) fetchError = error;
+        }
+      }
+      
+      // If we still don't have data, try other methods specific to different Grist versions
+      if (!tableData && typeof gristApi.getSelectedRecord === 'function') {
+        try {
+          const selectedRecord = await gristApi.getSelectedRecord();
+          console.log('Got selected record:', selectedRecord);
+          
+          if (selectedRecord) {
+            // Create a single-record array
+            tableData = [selectedRecord];
+            console.log('Created single-record array from selected record');
+          }
+        } catch (error) {
+          console.warn('getSelectedRecord failed:', error);
           if (!fetchError) fetchError = error;
         }
       }
@@ -202,8 +227,38 @@ const GristIntegration = (function() {
         return mockData;
       }
       
+      // Super detailed logging to understand the structure
       if (DEBUG_MODE) {
+        console.log('Raw tableData type:', typeof tableData);
+        console.log('Raw tableData is array:', Array.isArray(tableData));
+        console.log('Raw tableData keys:', Object.keys(tableData));
         console.log('Raw tableData structure:', tableData);
+        
+        // Check for deeply nested properties that might contain records
+        if (typeof tableData === 'object' && tableData !== null) {
+          function exploreObject(obj, path = '', depth = 0) {
+            if (depth > 3) return; // Limit recursion depth
+            
+            if (Array.isArray(obj) && obj.length > 0) {
+              console.log(`Found array at path: ${path}, length: ${obj.length}`);
+              if (obj.length > 0 && typeof obj[0] === 'object') {
+                console.log(`First item keys: ${Object.keys(obj[0])}`);
+              }
+            }
+            
+            if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+              for (const key in obj) {
+                const newPath = path ? `${path}.${key}` : key;
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                  exploreObject(obj[key], newPath, depth + 1);
+                }
+              }
+            }
+          }
+          
+          console.log('Exploring tableData for arrays:');
+          exploreObject(tableData);
+        }
       }
       
       // Check the structure of the returned data
@@ -218,26 +273,75 @@ const GristIntegration = (function() {
       if (Array.isArray(tableData)) {
         // Direct array of records
         records = tableData;
+        console.log('Found records directly in the array');
       } else if (tableData.records && Array.isArray(tableData.records)) {
         // Records in a 'records' property
         records = tableData.records;
+        console.log('Found records in tableData.records');
       } else if (tableData.data && Array.isArray(tableData.data)) {
         // Records in a 'data' property
         records = tableData.data;
+        console.log('Found records in tableData.data');
       } else {
         // Try to find any array property that might contain the records
+        let foundArray = false;
+        
+        // First, search for properties that might contain arrays
         for (const key in tableData) {
           if (Array.isArray(tableData[key]) && tableData[key].length > 0) {
             records = tableData[key];
             console.log(`Found records in property: ${key}`);
+            foundArray = true;
             break;
           }
         }
         
-        // If we still don't have records, log the entire structure
+        // If still not found, look for nested arrays
+        if (!foundArray) {
+          function findNestedArray(obj, path = '') {
+            if (Array.isArray(obj) && obj.length > 0 && typeof obj[0] === 'object') {
+              return { array: obj, path };
+            }
+            
+            if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+              for (const key in obj) {
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                  const result = findNestedArray(obj[key], path ? `${path}.${key}` : key);
+                  if (result) return result;
+                }
+              }
+            }
+            
+            return null;
+          }
+          
+          const nestedResult = findNestedArray(tableData);
+          if (nestedResult) {
+            records = nestedResult.array;
+            console.log(`Found records in nested path: ${nestedResult.path}`);
+            foundArray = true;
+          }
+        }
+        
+        // Special case: if the data is returned as an object map with numeric keys
+        if (!foundArray && typeof tableData === 'object' && !Array.isArray(tableData)) {
+          const numericKeys = Object.keys(tableData).filter(key => !isNaN(key));
+          if (numericKeys.length > 0) {
+            records = numericKeys.map(key => tableData[key]);
+            console.log(`Created array from object with numeric keys, found ${records.length} records`);
+            foundArray = true;
+          }
+        }
+        
+        // If we still don't have records, log the entire structure and fall back to mock data
         if (records.length === 0) {
           console.error('Unable to find records in the returned data structure:', tableData);
-          throw new Error('Could not locate records in the returned data structure');
+          showInPageMessage('Unable to find records in the Grist data. Using mock data instead.');
+          
+          // Use mock data as fallback
+          const mockData = generateMockData();
+          callbacks.onDataLoaded(mockData);
+          return mockData;
         }
       }
       
@@ -255,15 +359,80 @@ const GristIntegration = (function() {
         // Handle different possible record structures
         const fields = record.fields || record;
         
+        // Debug raw record
+        if (DEBUG_MODE && index === 0) {
+          console.log('Raw record to map:', fields);
+        }
+        
+        // Try to automatically detect field names if they're different
+        const detectedFields = {};
+        const knownFields = [
+          { standard: 'Project_Number', alternatives: ['project_number', 'projectnumber', 'project#', 'id'] },
+          { standard: 'Projects', alternatives: ['project', 'projectname', 'project_name', 'name', 'title'] },
+          { standard: 'DELIVERABLES', alternatives: ['deliverables', 'deliverable', 'outputs'] },
+          { standard: 'RECAPDELIVERABLES', alternatives: ['recapdeliverables', 'recap_deliverables', 'deliverables_recap', 'deliverables_detail'] },
+          { standard: 'year', alternatives: ['year', 'yr', 'project_year'] },
+          { standard: 'NOTES', alternatives: ['notes', 'note', 'description', 'desc'] },
+          { standard: 'Client', alternatives: ['client', 'customer', 'company'] },
+          { standard: 'Category', alternatives: ['category', 'type', 'project_type', 'projecttype'] },
+          { standard: 'Country', alternatives: ['country', 'nations'] },
+          { standard: 'City', alternatives: ['city', 'town', 'location'] }
+        ];
+        
+        // Try to match field names
+        for (const field of knownFields) {
+          // First try standard name
+          if (fields[field.standard] !== undefined) {
+            detectedFields[field.standard] = fields[field.standard];
+            continue;
+          }
+          
+          // Try case-insensitive standard name
+          const lowerStandard = field.standard.toLowerCase();
+          for (const key in fields) {
+            if (key.toLowerCase() === lowerStandard) {
+              detectedFields[field.standard] = fields[key];
+              break;
+            }
+          }
+          
+          // If still not found, try alternatives
+          if (detectedFields[field.standard] === undefined) {
+            for (const alt of field.alternatives) {
+              // Exact match to alternative
+              if (fields[alt] !== undefined) {
+                detectedFields[field.standard] = fields[alt];
+                break;
+              }
+              
+              // Case-insensitive match to alternative
+              const lowerAlt = alt.toLowerCase();
+              for (const key in fields) {
+                if (key.toLowerCase() === lowerAlt) {
+                  detectedFields[field.standard] = fields[key];
+                  break;
+                }
+              }
+              
+              if (detectedFields[field.standard] !== undefined) break;
+            }
+          }
+        }
+        
+        // If we detected some fields, log them
+        if (DEBUG_MODE && index === 0 && Object.keys(detectedFields).length > 0) {
+          console.log('Detected fields from automatic mapping:', detectedFields);
+        }
+        
         const mappedProject = {
-          Project_Number: getFieldValue(fields, 'Project_Number', ''),
-          Projects: getFieldValue(fields, 'Projects', ''),
-          DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
-          RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', ''),
-          year: getFieldValue(fields, 'year', null),
-          NOTES: getFieldValue(fields, 'NOTES', ''),
-          Client: getFieldValue(fields, 'Client', ''),
-          Category: getFieldValue(fields, 'Category', ''),
+          Project_Number: getFieldValue(fields, 'Project_Number', detectedFields.Project_Number || ''),
+          Projects: getFieldValue(fields, 'Projects', detectedFields.Projects || ''),
+          DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', detectedFields.DELIVERABLES || ''),
+          RECAPDELIVERABLES: getFieldValue(fields, 'RECAPDELIVERABLES', detectedFields.RECAPDELIVERABLES || ''),
+          year: getFieldValue(fields, 'year', detectedFields.year || null),
+          NOTES: getFieldValue(fields, 'NOTES', detectedFields.NOTES || ''),
+          Client: getFieldValue(fields, 'Client', detectedFields.Client || ''),
+          Category: getFieldValue(fields, 'Category', detectedFields.Category || ''),
           ThreeD: getFieldValue(fields, 'ThreeD', ''),
           AD: getFieldValue(fields, 'AD', ''),
           CD: getFieldValue(fields, 'CD', ''),
@@ -277,9 +446,9 @@ const GristIntegration = (function() {
           PM: getFieldValue(fields, 'PM', ''),
           Sales: getFieldValue(fields, 'Sales', ''),
           VFX: getFieldValue(fields, 'VFX', ''),
-          City: getFieldValue(fields, 'City', ''),
+          City: getFieldValue(fields, 'City', detectedFields.City || ''),
           State: getFieldValue(fields, 'State', ''),
-          Country: getFieldValue(fields, 'Country', ''),
+          Country: getFieldValue(fields, 'Country', detectedFields.Country || ''),
           Address: getFieldValue(fields, 'Address', ''),
           Latitude: getFieldValue(fields, 'Latitude', null),
           Longitude: getFieldValue(fields, 'Longitude', null),
@@ -290,7 +459,6 @@ const GristIntegration = (function() {
         
         // Debug the first record mapping
         if (DEBUG_MODE && index === 0) {
-          console.log('Input record for mapping:', fields);
           console.log('Output mapped record:', mappedProject);
         }
         
@@ -306,9 +474,12 @@ const GristIntegration = (function() {
       return projects;
     } catch (error) {
       console.error('Error processing Grist records:', error);
-      showInPageMessage('Error processing Grist records: ' + error.message);
-      callbacks.onError(error);
-      return [];
+      showInPageMessage('Error processing Grist records: ' + error.message + '. Using mock data instead.');
+      
+      // Fall back to mock data on error
+      const mockData = generateMockData();
+      callbacks.onDataLoaded(mockData);
+      return mockData;
     }
   }
   
@@ -391,7 +562,7 @@ const GristIntegration = (function() {
     
     // Log missing fields in debug mode
     if (DEBUG_MODE) {
-      console.warn(`Field "${fieldName}" not found in record`, obj);
+      console.warn(`Field "${fieldName}" not found in record`);
     }
     
     return defaultValue;
