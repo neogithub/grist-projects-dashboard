@@ -1,5 +1,8 @@
 // Grist Integration module
 const GristIntegration = (function() {
+  // Set to true to enable verbose logging of data structures
+  const DEBUG_MODE = true;
+  
   // Private variables
   let callbacks = {
     onDataLoaded: () => {},
@@ -32,7 +35,12 @@ const GristIntegration = (function() {
       
       if (!gristApi) {
         console.error('Grist API not available');
-        callbacks.onError(new Error('Grist API not available. Make sure this dashboard is loaded as a Custom Widget in Grist.'));
+        showInPageMessage('Grist API not available. This dashboard works best when loaded as a Custom Widget in Grist.');
+        
+        // Use mock data for testing outside of Grist
+        console.log('Using mock data for development');
+        const mockData = generateMockData();
+        callbacks.onDataLoaded(mockData);
         return;
       }
       
@@ -42,24 +50,49 @@ const GristIntegration = (function() {
           await gristApi.ready();
           console.log('Grist API connected');
           
-          const gristTable = await gristApi.getTable();
-          console.log('Connected to table:', gristTable);
+          // Some versions of Grist don't require getTable first
+          let gristTable = null;
+          try {
+            gristTable = await gristApi.getTable();
+            console.log('Connected to table:', gristTable);
+          } catch (tableError) {
+            console.warn('Could not get table, but continuing:', tableError);
+          }
           
           await fetchGristRecords();
         } catch (error) {
           console.error('Error connecting to Grist API:', error);
+          showInPageMessage('Error connecting to Grist API: ' + error.message);
           callbacks.onError(error);
         }
       } else {
         // For testing/development outside of Grist
         console.warn('Grist ready() method not available - using mock data');
+        showInPageMessage('Grist ready() method not available. Using mock data for development.');
         // Use mock data (for development/testing)
         const mockData = generateMockData();
         callbacks.onDataLoaded(mockData);
       }
     } catch (error) {
       console.error('Error initializing Grist:', error);
+      showInPageMessage('Error initializing Grist: ' + error.message);
       callbacks.onError(error);
+    }
+  }
+  
+  // Show a message in the page instead of just in console
+  function showInPageMessage(message) {
+    const loadingEl = document.getElementById('loadingState');
+    if (loadingEl) {
+      loadingEl.innerHTML = `
+        <div class="text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p class="mt-4 text-lg font-semibold text-gray-800">Note</p>
+          <p class="text-gray-600">${message}</p>
+        </div>
+      `;
     }
   }
   
@@ -121,9 +154,57 @@ const GristIntegration = (function() {
   // Fetch records from Grist
   async function fetchGristRecords() {
     try {
-      // Get all records from the current table
-      const tableData = await gristApi.fetchSelectedTable();
-      console.log('Fetched data from Grist:', tableData);
+      // Different ways to fetch table data based on Grist version
+      let tableData = null;
+      let fetchError = null;
+      
+      // Try fetchSelectedTable first
+      if (typeof gristApi.fetchSelectedTable === 'function') {
+        try {
+          tableData = await gristApi.fetchSelectedTable();
+          console.log('Fetched data using fetchSelectedTable');
+        } catch (error) {
+          console.warn('fetchSelectedTable failed:', error);
+          fetchError = error;
+        }
+      }
+      
+      // If fetchSelectedTable failed or doesn't exist, try onRecords callback
+      if (!tableData && typeof gristApi.onRecords === 'function') {
+        try {
+          tableData = await new Promise(resolve => {
+            const timeout = setTimeout(() => {
+              console.warn('onRecords callback timed out');
+              resolve(null);
+            }, 5000);
+            
+            gristApi.onRecords(data => {
+              clearTimeout(timeout);
+              resolve(data);
+            });
+          });
+          
+          if (tableData) {
+            console.log('Fetched data using onRecords callback');
+          }
+        } catch (error) {
+          console.warn('onRecords approach failed:', error);
+          if (!fetchError) fetchError = error;
+        }
+      }
+      
+      // If all Grist methods failed, use mock data
+      if (!tableData) {
+        console.warn('Could not fetch Grist data, using mock data', fetchError);
+        showInPageMessage('Could not fetch Grist data. Using mock data instead.');
+        const mockData = generateMockData();
+        callbacks.onDataLoaded(mockData);
+        return mockData;
+      }
+      
+      if (DEBUG_MODE) {
+        console.log('Raw tableData structure:', tableData);
+      }
       
       // Check the structure of the returned data
       if (!tableData || typeof tableData !== 'object') {
@@ -162,18 +243,19 @@ const GristIntegration = (function() {
       
       console.log(`Processing ${records.length} records from Grist`);
       
-      // Transform records to match our expected structure
-      // First, examine the first record to understand its structure
-      if (records.length > 0) {
-        console.log('Sample record structure:', records[0]);
+      // Debug record structure
+      if (DEBUG_MODE && records.length > 0) {
+        console.log('First record keys:', Object.keys(records[0]));
+        console.log('First record fields keys:', records[0].fields ? Object.keys(records[0].fields) : 'No fields property');
+        console.log('Complete first record:', records[0]);
       }
       
       // Now process all records
-      const projects = records.map(record => {
+      const projects = records.map((record, index) => {
         // Handle different possible record structures
         const fields = record.fields || record;
         
-        return {
+        const mappedProject = {
           Project_Number: getFieldValue(fields, 'Project_Number', ''),
           Projects: getFieldValue(fields, 'Projects', ''),
           DELIVERABLES: getFieldValue(fields, 'DELIVERABLES', ''),
@@ -205,6 +287,14 @@ const GristIntegration = (function() {
           Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
           films_by_project: getFieldValue(fields, 'films_by_project', '')
         };
+        
+        // Debug the first record mapping
+        if (DEBUG_MODE && index === 0) {
+          console.log('Input record for mapping:', fields);
+          console.log('Output mapped record:', mappedProject);
+        }
+        
+        return mappedProject;
       });
       
       // Call the callback with the processed projects
@@ -216,6 +306,7 @@ const GristIntegration = (function() {
       return projects;
     } catch (error) {
       console.error('Error processing Grist records:', error);
+      showInPageMessage('Error processing Grist records: ' + error.message);
       callbacks.onError(error);
       return [];
     }
@@ -253,38 +344,33 @@ const GristIntegration = (function() {
     // Subscribe to table data changes
     gristApi.onRecords(recordsData => {
       console.log('Table data changed, refreshing records');
-      
-      // Handle different possible data structures
-      let records;
-      if (Array.isArray(recordsData)) {
-        records = recordsData;
-      } else if (recordsData && typeof recordsData === 'object') {
-        // Try to find records in the returned object
-        if (recordsData.records && Array.isArray(recordsData.records)) {
-          records = recordsData.records;
-        } else if (recordsData.data && Array.isArray(recordsData.data)) {
-          records = recordsData.data;
-        } else {
-          console.error('Unexpected data structure in onRecords:', recordsData);
-          return;
-        }
-      } else {
-        console.error('Invalid data received in onRecords:', recordsData);
-        return;
-      }
-      
       fetchGristRecords();
     });
   }
   
-  // Helper function to safely get field values
+  // Helper function to safely get field values with extensive support for different data structures
   function getFieldValue(obj, fieldName, defaultValue) {
+    // Handle null/undefined input
     if (obj === null || obj === undefined) return defaultValue;
     
-    // Try direct access first
-    if (obj[fieldName] !== undefined) return obj[fieldName];
+    // Handle different Grist data structures
     
-    // Try case-insensitive match
+    // First check: direct access with the provided field name
+    if (obj[fieldName] !== undefined) {
+      return obj[fieldName];
+    }
+    
+    // Second check: if the object has a values property (used in some Grist versions)
+    if (obj.values && obj.values[fieldName] !== undefined) {
+      return obj.values[fieldName];
+    }
+    
+    // Third check: if the object has a fields property (used in some Grist versions)
+    if (obj.fields && obj.fields[fieldName] !== undefined) {
+      return obj.fields[fieldName];
+    }
+    
+    // Fourth check: case-insensitive match
     const lowerFieldName = fieldName.toLowerCase();
     for (const key in obj) {
       if (key.toLowerCase() === lowerFieldName) {
@@ -292,7 +378,43 @@ const GristIntegration = (function() {
       }
     }
     
+    // Fifth check: try to find the field in a nested structure
+    for (const key in obj) {
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        // Recursively check nested objects, but limit depth to avoid circular references
+        const nestedCheck = getNestedFieldValue(obj[key], fieldName, null, 2);
+        if (nestedCheck !== null) {
+          return nestedCheck;
+        }
+      }
+    }
+    
+    // Log missing fields in debug mode
+    if (DEBUG_MODE) {
+      console.warn(`Field "${fieldName}" not found in record`, obj);
+    }
+    
     return defaultValue;
+  }
+
+  // Helper function to search for a field in nested objects
+  function getNestedFieldValue(obj, fieldName, defaultValue, depth) {
+    if (depth <= 0 || obj === null || typeof obj !== 'object') return null;
+    
+    if (obj[fieldName] !== undefined) {
+      return obj[fieldName];
+    }
+    
+    for (const key in obj) {
+      if (typeof obj[key] === 'object' && obj[key] !== null) {
+        const nestedResult = getNestedFieldValue(obj[key], fieldName, null, depth - 1);
+        if (nestedResult !== null) {
+          return nestedResult;
+        }
+      }
+    }
+    
+    return null;
   }
 
   // Public API
