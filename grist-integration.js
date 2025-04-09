@@ -25,7 +25,7 @@ const GristIntegration = (function() {
   }
   
   // Initialize Grist connection
-  function initGristConnection() {
+  async function initGristConnection() {
     try {
       // Initialize Grist Plugin API
       gristApi = window.grist || undefined;
@@ -36,24 +36,86 @@ const GristIntegration = (function() {
         return;
       }
       
-      // Connect to the Grist API
-      gristApi.ready()
-        .then(() => {
+      // Connect to the Grist API - check if ready() is a function
+      if (typeof gristApi.ready === 'function') {
+        try {
+          await gristApi.ready();
           console.log('Grist API connected');
-          return gristApi.getTable();
-        })
-        .then(gristTable => {
+          
+          const gristTable = await gristApi.getTable();
           console.log('Connected to table:', gristTable);
-          return fetchGristRecords();
-        })
-        .catch(error => {
-          console.error('Error initializing Grist:', error);
+          
+          await fetchGristRecords();
+        } catch (error) {
+          console.error('Error connecting to Grist API:', error);
           callbacks.onError(error);
-        });
+        }
+      } else {
+        // For testing/development outside of Grist
+        console.warn('Grist ready() method not available - using mock data');
+        // Use mock data (for development/testing)
+        const mockData = generateMockData();
+        callbacks.onDataLoaded(mockData);
+      }
     } catch (error) {
       console.error('Error initializing Grist:', error);
       callbacks.onError(error);
     }
+  }
+  
+  // Generate mock data for testing
+  function generateMockData() {
+    return [
+      {
+        Project_Number: 'P001',
+        Projects: 'Website Redesign',
+        DELIVERABLES: 'Website',
+        RECAPDELIVERABLES: '<ul><li>Full site redesign</li><li>Mobile optimization</li></ul>',
+        year: '2023',
+        NOTES: 'Complete overhaul of existing website with modern design',
+        Client: 'ACME Corp',
+        Category: 'Digital',
+        ThreeD: 'John Doe',
+        PM: 'Jane Smith',
+        Developer: 'Bob Johnson',
+        City: 'New York',
+        Country: 'USA',
+        'Primary domain': 'https://example.com',
+        Marketing_Slides: 'https://slides.example.com/p1'
+      },
+      {
+        Project_Number: 'P002',
+        Projects: 'Marketing Campaign',
+        DELIVERABLES: 'Video, Social',
+        RECAPDELIVERABLES: '<ul><li>60s commercial</li><li>Social media assets</li></ul>',
+        year: '2023',
+        NOTES: 'Q4 marketing campaign for new product launch',
+        Client: 'TechStart Inc',
+        Category: 'Marketing',
+        CD: 'Sarah Williams',
+        DP: 'Michael Brown',
+        Editor: 'Lisa Davis',
+        City: 'San Francisco',
+        Country: 'USA',
+        films_by_project: 'https://videos.example.com/p2'
+      },
+      {
+        Project_Number: 'P003',
+        Projects: 'Brand Identity',
+        DELIVERABLES: 'Brand Guide',
+        RECAPDELIVERABLES: '<ul><li>Logo design</li><li>Brand guidelines</li><li>Asset library</li></ul>',
+        year: '2022',
+        NOTES: 'Complete brand refresh',
+        Client: 'Global Ventures',
+        Category: 'Branding',
+        Creative: 'David Lee',
+        Brand: 'Jessica Moore',
+        Design: 'Kevin Wilson',
+        City: 'London',
+        Country: 'UK',
+        Marketing_Slides: 'https://slides.example.com/p3'
+      }
+    ];
   }
   
   // Fetch records from Grist
@@ -161,6 +223,12 @@ const GristIntegration = (function() {
   
   // Set up Grist event listeners
   function setupGristEventListeners() {
+    // Check if event listeners are available
+    if (typeof gristApi.onRecord !== 'function' || typeof gristApi.onRecords !== 'function') {
+      console.warn('Grist event listeners not available');
+      return;
+    }
+    
     // Subscribe to selected record changes
     gristApi.onRecord(recordData => {
       if (!recordData) return;
