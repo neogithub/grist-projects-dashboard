@@ -168,6 +168,22 @@ const GristIntegration = (function() {
         // Handle different possible record structures
         const fields = record.fields || record;
         
+        // Debug: Show field names for the first record in HTML
+        if (records.indexOf(record) === 0) {
+          const debugDiv = document.createElement('div');
+          debugDiv.id = 'gristFieldDebug';
+          debugDiv.style.cssText = 'position:fixed;top:10px;right:10px;background:yellow;padding:10px;border:2px solid red;z-index:9999;max-width:300px;font-size:10px;';
+          debugDiv.innerHTML = `
+            <strong>Grist Field Debug:</strong><br>
+            Available fields: ${Object.keys(fields).join(', ')}<br><br>
+            Looking for:<br>
+            - Primary_domain_test: ${fields['Primary_domain_test'] || 'NOT FOUND'}<br>
+            - marketing_assets: ${fields['marketing_assets'] || 'NOT FOUND'}<br>
+            <button onclick="this.parentElement.remove()">Close</button>
+          `;
+          document.body.appendChild(debugDiv);
+        }
+        
         return {
           Project_Number: getFieldValue(fields, 'Project_Number', ''),
           Projects: getFieldValue(fields, 'Projects', ''),
