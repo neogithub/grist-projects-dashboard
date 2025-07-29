@@ -197,6 +197,7 @@ const GristIntegration = (function() {
           Latitude: getFieldValue(fields, 'Latitude', null),
           Longitude: getFieldValue(fields, 'Longitude', null),
           'Primary domain': getFieldValue(fields, 'Primary domain', ''),
+          'Primary domain-test': getFieldValue(fields, 'Primary domain-test', ''),
           Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
           films_by_project: getFieldValue(fields, 'films_by_project', ''),
           Website_URL: getFieldValue(fields, 'Website_URL', ''),

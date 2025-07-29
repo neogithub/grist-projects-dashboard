@@ -1,8 +1,13 @@
 // Project Details module
 const ProjectDetails = (function() {
+  let currentProject = null;
+  
   // Show project details
   function showProjectDetails(project) {
     if (!project) return;
+    
+    // Store current project for debugging
+    currentProject = project;
     
     // Set modal title
     document.getElementById('modalTitle').textContent = project.Projects || 'Untitled Project';
@@ -32,11 +37,15 @@ const ProjectDetails = (function() {
     // Fill in links
     populateLinksInfo(project);
     
+    // Hide debug section initially
+    document.getElementById('debugSection').classList.add('hidden');
+    
     // Show modal
     document.getElementById('projectModal').classList.remove('hidden');
     
-    // Add close event listener
+    // Add event listeners
     document.getElementById('closeModal').addEventListener('click', hideProjectDetails);
+    document.getElementById('debugBtn').addEventListener('click', toggleDebugInfo);
   }
   
   // Hide project details
@@ -96,9 +105,17 @@ const ProjectDetails = (function() {
     // Primary domain
     if (project['Primary domain']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
       </svg>`;
       linksContainer.appendChild(createLinkElement(project['Primary domain'], project['Primary domain'], icon));
+    }
+    
+    // Primary domain-test
+    if (project['Primary domain-test']) {
+      const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
+      </svg>`;
+      linksContainer.appendChild(createLinkElement(project['Primary domain-test'], 'Primary Domain (Test)', icon, 'text-orange-600'));
     }
     
     // Website URL
@@ -170,6 +187,56 @@ const ProjectDetails = (function() {
     
     if (linksContainer.children.length === 0) {
       linksContainer.innerHTML = '<span class="text-gray-500">No links available</span>';
+    }
+  }
+  
+  // Toggle debug information
+  function toggleDebugInfo() {
+    const debugSection = document.getElementById('debugSection');
+    const debugData = document.getElementById('debugData');
+    const debugBtn = document.getElementById('debugBtn');
+    
+    if (debugSection.classList.contains('hidden')) {
+      // Show debug info
+      debugSection.classList.remove('hidden');
+      debugBtn.textContent = 'Hide Debug';
+      debugBtn.classList.remove('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
+      debugBtn.classList.add('bg-red-200', 'hover:bg-red-300', 'text-red-700');
+      
+      // Populate debug data
+      if (currentProject) {
+        const debugInfo = {
+          'All Project Data': currentProject,
+          'Available Fields': Object.keys(currentProject).sort(),
+          'Link Fields': {
+            'Primary domain': currentProject['Primary domain'] || 'EMPTY',
+            'Primary domain-test': currentProject['Primary domain-test'] || 'EMPTY',
+            'Website_URL': currentProject['Website_URL'] || 'EMPTY',
+            'Vimeo_URL': currentProject['Vimeo_URL'] || 'EMPTY',
+            'YouTube_URL': currentProject['YouTube_URL'] || 'EMPTY',
+            'Neoshare_URL': currentProject['Neoshare_URL'] || 'EMPTY',
+            'Marketing_Slides': currentProject['Marketing_Slides'] || 'EMPTY',
+            'films_by_project': currentProject['films_by_project'] || 'EMPTY',
+            'Additional_Links': currentProject['Additional_Links'] || 'EMPTY'
+          },
+          'Field Count': Object.keys(currentProject).length,
+          'Non-Empty Fields': Object.keys(currentProject).filter(key => 
+            currentProject[key] !== null && 
+            currentProject[key] !== undefined && 
+            currentProject[key] !== ''
+          ).length
+        };
+        
+        debugData.textContent = JSON.stringify(debugInfo, null, 2);
+      } else {
+        debugData.textContent = 'No project data available';
+      }
+    } else {
+      // Hide debug info
+      debugSection.classList.add('hidden');
+      debugBtn.textContent = 'Debug';
+      debugBtn.classList.remove('bg-red-200', 'hover:bg-red-300', 'text-red-700');
+      debugBtn.classList.add('bg-gray-200', 'hover:bg-gray-300', 'text-gray-700');
     }
   }
 
