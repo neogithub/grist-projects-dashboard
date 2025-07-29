@@ -111,11 +111,11 @@ const ProjectDetails = (function() {
     }
     
     // Primary domain-test
-    if (project['Primary domain-test']) {
+    if (project['Primary_domain_test']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
       </svg>`;
-      linksContainer.appendChild(createLinkElement(project['Primary domain-test'], 'Primary Domain (Test)', icon, 'text-orange-600'));
+      linksContainer.appendChild(createLinkElement(project['Primary_domain_test'], 'Primary Domain (Test)', icon, 'text-orange-600'));
     }
     
     // Website URL
@@ -144,8 +144,8 @@ const ProjectDetails = (function() {
     
     // Neoshare URL (check dedicated field first, then marketing_assets)
     let neoshareUrl = project['Neoshare_URL'];
-    if (!neoshareUrl && project['Marketing_Slides'] && project['Marketing_Slides'].includes('neoshare.com')) {
-      neoshareUrl = project['Marketing_Slides'];
+    if (!neoshareUrl && project['marketing_assets'] && project['marketing_assets'].includes('neoshare.com')) {
+      neoshareUrl = project['marketing_assets'];
     }
     if (neoshareUrl) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,12 +154,12 @@ const ProjectDetails = (function() {
       linksContainer.appendChild(createLinkElement(neoshareUrl, 'Neoshare', icon, 'text-green-600'));
     }
     
-    // Marketing Slides (only if not already shown as Neoshare)
-    if (project['Marketing_Slides'] && !neoshareUrl) {
+    // Marketing Assets (only if not already shown as Neoshare)
+    if (project['marketing_assets'] && !neoshareUrl) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
       </svg>`;
-      linksContainer.appendChild(createLinkElement(project['Marketing_Slides'], 'Marketing Assets', icon, 'text-purple-600'));
+      linksContainer.appendChild(createLinkElement(project['marketing_assets'], 'Marketing Assets', icon, 'text-purple-600'));
     }
     
     // Streaming Video
@@ -231,11 +231,9 @@ const ProjectDetails = (function() {
       if (currentProject) {
         const debugInfo = {
           'GRIST FIELD MAPPING ISSUE DETECTED': 'The fields we are looking for are not being mapped correctly',
-          'Expected vs Actual Fields': {
-            'We look for: Primary domain-test': `Found: ${currentProject['Primary domain-test'] || 'NOT FOUND'}`,
-            'We look for: Marketing_Slides': `Found: ${currentProject['Marketing_Slides'] || 'NOT FOUND'}`,
-            'Raw data shows: Primary_domain_test': `Value: ${currentProject['Primary_domain_test'] || 'NOT IN PROCESSED DATA'}`,
-            'Raw data shows: marketing_assets': `Value: ${currentProject['marketing_assets'] || 'NOT IN PROCESSED DATA'}`
+          'FIELD MAPPING FIXED': {
+            'Primary_domain_test': `Value: ${currentProject['Primary_domain_test'] || 'NOT FOUND'}`,
+            'marketing_assets': `Value: ${currentProject['marketing_assets'] || 'NOT FOUND'}`
           },
           'All Project Data': currentProject,
           'Available Fields': Object.keys(currentProject).sort(),
@@ -247,12 +245,12 @@ const ProjectDetails = (function() {
           ),
           'Link Fields (Current Mapping)': {
             'Primary domain': currentProject['Primary domain'] || 'EMPTY',
-            'Primary domain-test': currentProject['Primary domain-test'] || 'EMPTY',
+            'Primary_domain_test': currentProject['Primary_domain_test'] || 'EMPTY',
+            'marketing_assets': currentProject['marketing_assets'] || 'EMPTY',
             'Website_URL': currentProject['Website_URL'] || 'EMPTY',
             'Vimeo_URL': currentProject['Vimeo_URL'] || 'EMPTY',
             'YouTube_URL': currentProject['YouTube_URL'] || 'EMPTY',
             'Neoshare_URL': currentProject['Neoshare_URL'] || 'EMPTY',
-            'Marketing_Slides': currentProject['Marketing_Slides'] || 'EMPTY',
             'streaming_video': currentProject['streaming_video'] || 'EMPTY',
             'films_by_project': currentProject['films_by_project'] || 'EMPTY',
             'Additional_Links': currentProject['Additional_Links'] || 'EMPTY'
