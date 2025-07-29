@@ -230,9 +230,22 @@ const ProjectDetails = (function() {
       // Populate debug data
       if (currentProject) {
         const debugInfo = {
+          'GRIST FIELD MAPPING ISSUE DETECTED': 'The fields we are looking for are not being mapped correctly',
+          'Expected vs Actual Fields': {
+            'We look for: Primary domain-test': `Found: ${currentProject['Primary domain-test'] || 'NOT FOUND'}`,
+            'We look for: Marketing_Slides': `Found: ${currentProject['Marketing_Slides'] || 'NOT FOUND'}`,
+            'Raw data shows: Primary_domain_test': `Value: ${currentProject['Primary_domain_test'] || 'NOT IN PROCESSED DATA'}`,
+            'Raw data shows: marketing_assets': `Value: ${currentProject['marketing_assets'] || 'NOT IN PROCESSED DATA'}`
+          },
           'All Project Data': currentProject,
           'Available Fields': Object.keys(currentProject).sort(),
-          'Link Fields': {
+          'Fields with URL/Link in name': Object.keys(currentProject).filter(key => 
+            key.toLowerCase().includes('url') || 
+            key.toLowerCase().includes('link') || 
+            key.toLowerCase().includes('domain') ||
+            key.toLowerCase().includes('asset')
+          ),
+          'Link Fields (Current Mapping)': {
             'Primary domain': currentProject['Primary domain'] || 'EMPTY',
             'Primary domain-test': currentProject['Primary domain-test'] || 'EMPTY',
             'Website_URL': currentProject['Website_URL'] || 'EMPTY',
