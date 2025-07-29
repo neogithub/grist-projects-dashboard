@@ -92,8 +92,27 @@ const ProjectDetails = (function() {
     const linksContainer = document.getElementById('modalLinks');
     linksContainer.innerHTML = '';
     
+    console.log('Populating links for project:', project.Projects || 'Unknown');
+    console.log('All project keys:', Object.keys(project));
+    console.log('Keys containing domain:', Object.keys(project).filter(key => key.toLowerCase().includes('domain')));
+    console.log('Keys containing url:', Object.keys(project).filter(key => key.toLowerCase().includes('url')));
+    console.log('Keys containing link:', Object.keys(project).filter(key => key.toLowerCase().includes('link')));
+    
+    console.log('Available link data:', {
+      'Primary domain': project['Primary domain'],
+      'Primary domain-test': project['Primary domain-test'],
+      'Website_URL': project['Website_URL'],
+      'Vimeo_URL': project['Vimeo_URL'],
+      'YouTube_URL': project['YouTube_URL'],
+      'Neoshare_URL': project['Neoshare_URL'],
+      'Marketing_Slides': project['Marketing_Slides'],
+      'films_by_project': project['films_by_project'],
+      'Additional_Links': project['Additional_Links']
+    });
+    
     // Helper function to create link element
     function createLinkElement(url, label, iconSvg, colorClass = 'text-blue-600') {
+      console.log('Creating link element:', { url, label, colorClass });
       const linkElement = document.createElement('div');
       linkElement.innerHTML = `<a href="${url}" target="_blank" class="${colorClass} hover:underline flex items-center">
         ${iconSvg}
@@ -103,6 +122,7 @@ const ProjectDetails = (function() {
     }
     
     // Primary domain
+    console.log('Checking Primary domain:', project['Primary domain'], 'truthy?', !!project['Primary domain']);
     if (project['Primary domain']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
@@ -111,6 +131,7 @@ const ProjectDetails = (function() {
     }
     
     // Primary domain-test
+    console.log('Checking Primary domain-test:', project['Primary domain-test'], 'truthy?', !!project['Primary domain-test']);
     if (project['Primary domain-test']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
@@ -185,8 +206,13 @@ const ProjectDetails = (function() {
       });
     }
     
+    console.log('Links added to container:', linksContainer.children.length);
+    
     if (linksContainer.children.length === 0) {
+      console.log('No links found, showing "No links available" message');
       linksContainer.innerHTML = '<span class="text-gray-500">No links available</span>';
+    } else {
+      console.log('Successfully added', linksContainer.children.length, 'links');
     }
   }
   
