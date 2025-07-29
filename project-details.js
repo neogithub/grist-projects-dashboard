@@ -92,27 +92,8 @@ const ProjectDetails = (function() {
     const linksContainer = document.getElementById('modalLinks');
     linksContainer.innerHTML = '';
     
-    console.log('Populating links for project:', project.Projects || 'Unknown');
-    console.log('All project keys:', Object.keys(project));
-    console.log('Keys containing domain:', Object.keys(project).filter(key => key.toLowerCase().includes('domain')));
-    console.log('Keys containing url:', Object.keys(project).filter(key => key.toLowerCase().includes('url')));
-    console.log('Keys containing link:', Object.keys(project).filter(key => key.toLowerCase().includes('link')));
-    
-    console.log('Available link data:', {
-      'Primary domain': project['Primary domain'],
-      'Primary domain-test': project['Primary domain-test'],
-      'Website_URL': project['Website_URL'],
-      'Vimeo_URL': project['Vimeo_URL'],
-      'YouTube_URL': project['YouTube_URL'],
-      'Neoshare_URL': project['Neoshare_URL'],
-      'Marketing_Slides': project['Marketing_Slides'],
-      'films_by_project': project['films_by_project'],
-      'Additional_Links': project['Additional_Links']
-    });
-    
     // Helper function to create link element
     function createLinkElement(url, label, iconSvg, colorClass = 'text-blue-600') {
-      console.log('Creating link element:', { url, label, colorClass });
       const linkElement = document.createElement('div');
       linkElement.innerHTML = `<a href="${url}" target="_blank" class="${colorClass} hover:underline flex items-center">
         ${iconSvg}
@@ -122,7 +103,6 @@ const ProjectDetails = (function() {
     }
     
     // Primary domain
-    console.log('Checking Primary domain:', project['Primary domain'], 'truthy?', !!project['Primary domain']);
     if (project['Primary domain']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
@@ -131,7 +111,6 @@ const ProjectDetails = (function() {
     }
     
     // Primary domain-test
-    console.log('Checking Primary domain-test:', project['Primary domain-test'], 'truthy?', !!project['Primary domain-test']);
     if (project['Primary domain-test']) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 719-9" />
@@ -163,20 +142,44 @@ const ProjectDetails = (function() {
       linksContainer.appendChild(createLinkElement(project['YouTube_URL'], 'YouTube', icon, 'text-red-600'));
     }
     
-    // Neoshare URL
-    if (project['Neoshare_URL']) {
+    // Neoshare URL (check dedicated field first, then marketing_assets)
+    let neoshareUrl = project['Neoshare_URL'];
+    if (!neoshareUrl && project['Marketing_Slides'] && project['Marketing_Slides'].includes('neoshare.com')) {
+      neoshareUrl = project['Marketing_Slides'];
+    }
+    if (neoshareUrl) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
       </svg>`;
-      linksContainer.appendChild(createLinkElement(project['Neoshare_URL'], 'Neoshare', icon, 'text-green-600'));
+      linksContainer.appendChild(createLinkElement(neoshareUrl, 'Neoshare', icon, 'text-green-600'));
     }
     
-    // Marketing Slides
-    if (project['Marketing_Slides']) {
+    // Marketing Slides (only if not already shown as Neoshare)
+    if (project['Marketing_Slides'] && !neoshareUrl) {
       const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
       </svg>`;
-      linksContainer.appendChild(createLinkElement(project['Marketing_Slides'], 'Marketing Slides', icon, 'text-purple-600'));
+      linksContainer.appendChild(createLinkElement(project['Marketing_Slides'], 'Marketing Assets', icon, 'text-purple-600'));
+    }
+    
+    // Streaming Video
+    if (project['streaming_video']) {
+      const icon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v4a2 2 0 002 2h2a2 2 0 002-2v-4M9 10V9a2 2 0 012-2h2a2 2 0 012 2v1" />
+      </svg>`;
+      
+      // Try to determine the video platform
+      let label = 'Video';
+      let colorClass = 'text-blue-600';
+      if (project['streaming_video'].includes('vimeo.com')) {
+        label = 'Vimeo';
+        colorClass = 'text-blue-500';
+      } else if (project['streaming_video'].includes('youtube.com') || project['streaming_video'].includes('youtu.be')) {
+        label = 'YouTube';
+        colorClass = 'text-red-600';
+      }
+      
+      linksContainer.appendChild(createLinkElement(project['streaming_video'], label, icon, colorClass));
     }
     
     // Films
@@ -206,13 +209,8 @@ const ProjectDetails = (function() {
       });
     }
     
-    console.log('Links added to container:', linksContainer.children.length);
-    
     if (linksContainer.children.length === 0) {
-      console.log('No links found, showing "No links available" message');
       linksContainer.innerHTML = '<span class="text-gray-500">No links available</span>';
-    } else {
-      console.log('Successfully added', linksContainer.children.length, 'links');
     }
   }
   
@@ -242,6 +240,7 @@ const ProjectDetails = (function() {
             'YouTube_URL': currentProject['YouTube_URL'] || 'EMPTY',
             'Neoshare_URL': currentProject['Neoshare_URL'] || 'EMPTY',
             'Marketing_Slides': currentProject['Marketing_Slides'] || 'EMPTY',
+            'streaming_video': currentProject['streaming_video'] || 'EMPTY',
             'films_by_project': currentProject['films_by_project'] || 'EMPTY',
             'Additional_Links': currentProject['Additional_Links'] || 'EMPTY'
           },
