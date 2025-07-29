@@ -198,12 +198,7 @@ const GristIntegration = (function() {
           Longitude: getFieldValue(fields, 'Longitude', null),
           'Primary domain': getFieldValue(fields, 'Primary domain', ''),
           Marketing_Slides: getFieldValue(fields, 'Marketing_Slides', ''),
-          films_by_project: getFieldValue(fields, 'films_by_project', ''),
-          Website_URL: getFieldValue(fields, 'Website_URL', ''),
-          Vimeo_URL: getFieldValue(fields, 'Vimeo_URL', ''),
-          Neoshare_URL: getFieldValue(fields, 'Neoshare_URL', ''),
-          YouTube_URL: getFieldValue(fields, 'YouTube_URL', ''),
-          Additional_Links: getFieldValue(fields, 'Additional_Links', '')
+          films_by_project: getFieldValue(fields, 'films_by_project', '')
         };
       });
       
