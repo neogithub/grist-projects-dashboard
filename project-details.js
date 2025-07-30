@@ -25,11 +25,26 @@ const ProjectDetails = (function() {
       project.Country
     ].filter(Boolean).join(', ') || 'Location unknown';
     
-    // Fill in notes
-    document.getElementById('modalNotes').textContent = project.NOTES || 'No notes available';
+    // Fill in notes and hide section if empty
+    const notesSection = document.getElementById('notesSection');
+    const modalNotes = document.getElementById('modalNotes');
+    if (project.NOTES && project.NOTES.trim() !== '') {
+      modalNotes.textContent = project.NOTES;
+      notesSection.style.display = 'block';
+    } else {
+      notesSection.style.display = 'none';
+    }
     
-    // Fill in deliverables (supports HTML)
-    document.getElementById('modalDeliverables').innerHTML = project.RECAPDELIVERABLES || `<span class="text-gray-500">No deliverables listed</span>`;
+    // Fill in deliverables (supports HTML) and ensure proper styling
+    const deliverables = project.RECAPDELIVERABLES || `<span class="text-gray-500">No deliverables listed</span>`;
+    const deliverablesContainer = document.getElementById('modalDeliverables');
+    deliverablesContainer.innerHTML = deliverables;
+    
+    // Add proper styling to any lists in deliverables
+    const lists = deliverablesContainer.querySelectorAll('ul, ol');
+    lists.forEach(list => {
+      list.classList.add('list-disc', 'list-inside', 'space-y-1', 'text-gray-700');
+    });
     
     // Fill in team
     populateTeamInfo(project);
@@ -75,7 +90,8 @@ const ProjectDetails = (function() {
     ];
     
     teamRoles.forEach(role => {
-      if (project[role.key]) {
+      // Only show team roles that have non-empty values
+      if (project[role.key] && project[role.key].trim() !== '') {
         const roleElement = document.createElement('div');
         roleElement.innerHTML = `<span class="font-medium">${role.label}:</span> ${project[role.key]}`;
         teamContainer.appendChild(roleElement);
