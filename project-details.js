@@ -1,10 +1,24 @@
 // Project Details module
 const ProjectDetails = (function() {
   let currentProject = null;
+  let initialized = false;
+  
+  // Initialize event listeners once
+  function init() {
+    if (initialized) return;
+    
+    document.getElementById('closeModal').addEventListener('click', hideProjectDetails);
+    document.getElementById('debugBtn').addEventListener('click', toggleDebugInfo);
+    
+    initialized = true;
+  }
   
   // Show project details
   function showProjectDetails(project) {
     if (!project) return;
+    
+    // Initialize if not already done
+    init();
     
     // Store current project for debugging
     currentProject = project;
@@ -57,10 +71,6 @@ const ProjectDetails = (function() {
     
     // Show modal
     document.getElementById('projectModal').classList.remove('hidden');
-    
-    // Add event listeners
-    document.getElementById('closeModal').addEventListener('click', hideProjectDetails);
-    document.getElementById('debugBtn').addEventListener('click', toggleDebugInfo);
   }
   
   // Hide project details
@@ -91,9 +101,10 @@ const ProjectDetails = (function() {
     
     teamRoles.forEach(role => {
       // Only show team roles that have non-empty values
-      if (project[role.key] && project[role.key].trim() !== '') {
+      const value = project[role.key];
+      if (value && String(value).trim() !== '') {
         const roleElement = document.createElement('div');
-        roleElement.innerHTML = `<span class="font-medium">${role.label}:</span> ${project[role.key]}`;
+        roleElement.innerHTML = `<span class="font-medium">${role.label}:</span> ${value}`;
         teamContainer.appendChild(roleElement);
       }
     });
