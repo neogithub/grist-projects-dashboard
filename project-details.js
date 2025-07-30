@@ -1,6 +1,8 @@
 // Project Details module
 const ProjectDetails = (function() {
   let currentProject = null;
+  let currentProjectIndex = -1;
+  let projectsList = [];
   let initialized = false;
   
   // Initialize event listeners once
@@ -9,19 +11,29 @@ const ProjectDetails = (function() {
     
     document.getElementById('closeModal').addEventListener('click', hideProjectDetails);
     document.getElementById('debugBtn').addEventListener('click', toggleDebugInfo);
+    document.getElementById('prevProjectBtn').addEventListener('click', showPreviousProject);
+    document.getElementById('nextProjectBtn').addEventListener('click', showNextProject);
+    
+    // Add keyboard navigation
+    document.addEventListener('keydown', handleKeyboardNavigation);
     
     initialized = true;
   }
   
   // Show project details
-  function showProjectDetails(project) {
+  function showProjectDetails(project, projects = [], index = -1) {
     if (!project) return;
     
     // Initialize if not already done
     init();
     
-    // Store current project for debugging
+    // Store current project and context for navigation
     currentProject = project;
+    projectsList = projects;
+    currentProjectIndex = index;
+    
+    // Update navigation buttons and counter
+    updateNavigationState();
     
     // Set modal title
     document.getElementById('modalTitle').textContent = project.Projects || 'Untitled Project';
@@ -76,6 +88,71 @@ const ProjectDetails = (function() {
   // Hide project details
   function hideProjectDetails() {
     document.getElementById('projectModal').classList.add('hidden');
+  }
+  
+  // Update navigation button states and counter
+  function updateNavigationState() {
+    const prevBtn = document.getElementById('prevProjectBtn');
+    const nextBtn = document.getElementById('nextProjectBtn');
+    const counter = document.getElementById('modalCounter');
+    
+    if (projectsList.length > 1 && currentProjectIndex >= 0) {
+      // Show counter
+      counter.textContent = `${currentProjectIndex + 1} of ${projectsList.length}`;
+      counter.style.display = 'block';
+      
+      // Update button states
+      prevBtn.disabled = currentProjectIndex === 0;
+      nextBtn.disabled = currentProjectIndex === projectsList.length - 1;
+      
+      // Show buttons
+      prevBtn.style.visibility = 'visible';
+      nextBtn.style.visibility = 'visible';
+    } else {
+      // Hide navigation when only one project or no context
+      counter.style.display = 'none';
+      prevBtn.style.visibility = 'hidden';
+      nextBtn.style.visibility = 'hidden';
+    }
+  }
+  
+  // Show previous project
+  function showPreviousProject() {
+    if (currentProjectIndex > 0) {
+      const prevProject = projectsList[currentProjectIndex - 1];
+      showProjectDetails(prevProject, projectsList, currentProjectIndex - 1);
+    }
+  }
+  
+  // Show next project
+  function showNextProject() {
+    if (currentProjectIndex < projectsList.length - 1) {
+      const nextProject = projectsList[currentProjectIndex + 1];
+      showProjectDetails(nextProject, projectsList, currentProjectIndex + 1);
+    }
+  }
+  
+  // Handle keyboard navigation
+  function handleKeyboardNavigation(event) {
+    // Only handle keyboard navigation when modal is open
+    if (document.getElementById('projectModal').classList.contains('hidden')) {
+      return;
+    }
+    
+    switch(event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        showPreviousProject();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        showNextProject();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        hideProjectDetails();
+        break;
+    }
   }
   
   // Populate team information

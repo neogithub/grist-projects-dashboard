@@ -160,10 +160,12 @@ const ProjectsDashboard = (function() {
     document.getElementById('nextPageBtn').disabled = endIndex >= filteredProjects.length;
     
     // Add event listeners
-    document.querySelectorAll('.project-card').forEach(card => {
+    document.querySelectorAll('.project-card').forEach((card, cardIndex) => {
       card.addEventListener('click', () => {
         const projectId = card.getAttribute('data-project-id');
-        ProjectDetails.show(allProjects.find(p => p.Project_Number === projectId));
+        const project = filteredProjects.find(p => p.Project_Number === projectId);
+        const projectIndex = filteredProjects.findIndex(p => p.Project_Number === projectId);
+        ProjectDetails.show(project, filteredProjects, projectIndex);
       });
     });
   }
@@ -273,6 +275,7 @@ const ProjectsDashboard = (function() {
 
   // Public API
   return {
-    init: init
+    init: init,
+    getFilteredProjects: () => filteredProjects
   };
 })();
